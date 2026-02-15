@@ -1,0 +1,375 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      -->
+<title>FINDLARGESTBOX2D Examples</title>
+<meta name="generator" content="MATLAB 25.2">
+<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+<meta name="DC.date" content="2026-02-08">
+<meta name="DC.source" content="findLargestBox2D_doc.m">
+<style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style>
+</head>
+<body>
+<div class="content">
+<h1>
+<tt>FINDLARGESTBOX2D</tt> Examples</h1>
+<!--introduction-->
+<p>The function <a href="https://www.mathworks.com/matlabcentral/fileexchange/######"><tt>findLargestBox2D</tt></a> finds the maximum-area axis-aligned rectangle within a 2D logical mask using an efficient <a href="https://en.wikipedia.org/wiki/Big_O_notation">O(rows*cols)</a> histogram- based algorithm. The function accepts input as a logical matrix, a sparse matrix, or as row index and column index vectors. This document demonstrates the different input formats and output arguments with practical examples.</p>
+<!--/introduction-->
+<h2>Contents</h2>
+<div>
+<ul>
+<li>
+<a href="#1">Basic Usage: Logical 2D Matrix</a>
+</li>
+<li>
+<a href="#2">Input Index Vector</a>
+</li>
+<li>
+<a href="#3">Input Sparse Matrix</a>
+</li>
+<li>
+<a href="#4">2nd Output: Area</a>
+</li>
+<li>
+<a href="#5">3rd Output: Information Structure</a>
+</li>
+<li>
+<a href="#6">3rd Output: Box Substructure</a>
+</li>
+<li>
+<a href="#7">Empty or No Valid Rectangle</a>
+</li>
+<li>
+<a href="#8">Complex Pattern Example</a>
+</li>
+<li>
+<a href="#9">Efficiency of Indices and Sparse Data</a>
+</li>
+</ul>
+</div>
+<h2 id="1">Basic Usage: Logical 2D Matrix</h2>
+<p>
+<tt>findLargestBox2D</tt> accepts a 2D logical matrix where TRUE indicates usable pixels and FALSE indicates blocked pixels. The function returns the bounding box corners of the largest rectangle consisting entirely of TRUE pixels. The output <tt>bbox</tt> is a 2x2 matrix [r1,r2; c1,c2] where</p>
+<div>
+<ul>
+<li>r1 and r2 are the first and last row indices, and</li>
+<li>c1 and c2 are the first and last column indices.</li>
+</ul>
+</div>
+<p>The largest rectangle spans from pixel (r1,c1) to pixel (r2,c2) inclusive:</p>
+<pre class="codeinput">mask = false(9,9);
+mask(2:3, 2:5) = true;  <span class="comment">% 2x4 rectangle (area 8)</span>
+mask(3:5, 3:7) = true   <span class="comment">% 3x5 rectangle (area 15)</span>
+bbox = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">mask =
+  9&times;9 logical array
+   0   0   0   0   0   0   0   0   0
+   0   1   1   1   1   0   0   0   0
+   0   1   1   1   1   1   1   0   0
+   0   0   1   1   1   1   1   0   0
+   0   0   1   1   1   1   1   0   0
+   0   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0   0
+bbox =
+     3     5
+     3     7
+</pre>
+<h2 id="2">Input Index Vector</h2>
+<p>Instead of providing a matrix, you can supply two vectors containing the row and column indices of usable pixels. This is particularly useful when working with the output of <tt>find</tt> or when you already have index data. In general this format provides memory savings compared to a full matrix.</p>
+<pre class="codeinput">[rows, cols] = find(mask);
+bbox = findLargestBox2D(rows, cols)
+</pre>
+<pre class="codeoutput">bbox =
+     3     5
+     3     7
+</pre>
+<h2 id="3">Input Sparse Matrix</h2>
+<p>For large matrices this input format may provide memory savings. The function processes one row at a time rather than converting the entire sparse matrix to full. Note that for sparse matrices any non-zero value is treated as TRUE (usable), while zero values are treated as FALSE (blocked).</p>
+<pre class="codeinput">mask = sparse(10000, 10000);
+mask(1000:1010, 2000:2050) = 1;  <span class="comment">% 11x51 rectangle</span>
+bbox = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">bbox =
+        1000        1010
+        2000        2050
+</pre>
+<h2 id="4">2nd Output: Area</h2>
+<p>The second output returns the area of the largest rectangle in pixels:</p>
+<pre class="codeinput">[~, area] = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">area =
+   561
+</pre>
+<h2 id="5">3rd Output: Information Structure</h2>
+<p>The third output <tt>info</tt> provides data about the function execution:</p>
+<pre class="codeinput">[~, ~, info] = findLargestBox2D(mask) <span class="comment">% 11x51 = 561</span>
+</pre>
+<pre class="codeoutput">info = 
+  struct with fields:
+
+    rowsProcessed: 11
+      inputFormat: 'sparse'
+              box: [1&times;1 struct]
+        timeTotal: 0.0018467
+</pre>
+<h2 id="6">3rd Output: Box Substructure</h2>
+<p>If a rectangle is found then the <tt>info.box</tt> substructure provides comprehensive geometric information about the rectangle. The <tt>corners</tt> field gives fractional coordinates (pixel centers are at integer coordinates, so corners are offset by 0.5). The <tt>center</tt> field indicates where the diagonals of the rectangle intersect.</p>
+<pre class="codeinput">info.box
+</pre>
+<pre class="codeoutput">ans = 
+  struct with fields:
+
+      indices: [2&times;2 double]
+      corners: [2&times;2 double]
+       center: [2&times;1 double]
+       height: 11
+        width: 51
+         area: 561
+    perimeter: 124
+     diagonal: 52.173
+</pre>
+<h2 id="7">Empty or No Valid Rectangle</h2>
+<p>If the input contains no usable pixels (e.g. all FALSE), the function returns an empty <tt>bbox</tt> and zero area:</p>
+<pre class="codeinput">mask = false(5,5);  <span class="comment">% all blocked pixels</span>
+[bbox, area] = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">bbox =
+     []
+area =
+     0
+</pre>
+<h2 id="8">Complex Pattern Example</h2>
+<p>A more complex mask demonstrating the algorithm finding the optimal rectangle among multiple irregular regions:</p>
+<pre class="codeinput">mask = false(15,15);
+mask(2:4, 2:6) = true;    <span class="comment">% 3x5 rectangle</span>
+mask(6:9, 8:14) = true;   <span class="comment">% 4x7 rectangle (largest: area 28)</span>
+mask(11:13, 2:4) = true;  <span class="comment">% 3x3 rectangle</span>
+[bbox, area] = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">bbox =
+     6     9
+     8    14
+area =
+    28
+</pre>
+<h2 id="9">Efficiency of Indices and Sparse Data</h2>
+<p>The function is particularly efficient for index data. Using the index vector input or sparse matrix input avoids creating full matrices.</p>
+<p>Note that runtime is heavily dependent on the data density, the number of rectangles, the provided data type, etc. There is no simple way to predict which format will require the least memory or runtime.</p>
+<p>For example, a 9999x9999 mask with a small usable region:</p>
+<pre class="codeinput">mask = false(9999,9999);
+mask(8888,8888) = true;
+mask(432:456,543:567) = true;
+[bboxL, areaL, infoL] = findLargestBox2D(mask);
+
+[rows,cols] = find(mask);
+[bboxI, areaI, infoI] = findLargestBox2D(rows, cols);
+
+[rows, cols] = meshgrid(432:456, 543:567);
+rows = [rows(:);8888];
+cols = [cols(:);8888];
+[bboxJ, areaJ, infoJ] = findLargestBox2D(rows, cols);
+
+mask = sparse(rows,cols,1);
+[bboxS, areaS, infoS] = findLargestBox2D(mask);
+
+isequal(bboxL,bboxI,bboxJ,bboxS)
+isequal(areaL,areaI,areaJ,areaS)
+
+fprintf(<span class="string">'%9.6f seconds for %s\n'</span>,<span class="keyword">...</span>
+	infoL.timeTotal, <span class="string">'logical matrix'</span>,<span class="keyword">...</span>
+	infoI.timeTotal, <span class="string">'indices (from logical matrix)'</span>,<span class="keyword">...</span>
+	infoJ.timeTotal, <span class="string">'indices (from meshgrid)'</span>,<span class="keyword">...</span>
+	infoS.timeTotal, <span class="string">'sparse matrix'</span>)
+</pre>
+<pre class="codeoutput">ans =
+  logical
+   1
+ans =
+  logical
+   1
+ 1.813574 seconds for logical matrix
+ 0.804278 seconds for indices (from logical matrix)
+ 0.786624 seconds for indices (from meshgrid)
+ 0.426920 seconds for sparse matrix
+</pre>
+<p class="footer">
+<br>
+<a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2025b</a>
+<br>
+</p>
+</div>
+<!--
+##### SOURCE BEGIN #####
+%% |FINDLARGESTBOX2D| Examples
+% The function <https://www.mathworks.com/matlabcentral/fileexchange/######
+% |findLargestBox2D|> finds the maximum-area axis-aligned rectangle within
+% a 2D logical mask using an efficient 
+% <https://en.wikipedia.org/wiki/Big_O_notation O(rows*cols)> histogram-
+% based algorithm. The function accepts input as a logical matrix,
+% a sparse matrix, or as row index and column index vectors.
+% This document demonstrates the different input formats and output
+% arguments with practical examples.
+%
+%% Basic Usage: Logical 2D Matrix
+% |findLargestBox2D| accepts a 2D logical matrix where TRUE indicates
+% usable pixels and FALSE indicates blocked pixels. The function returns
+% the bounding box corners of the largest rectangle consisting entirely of
+% TRUE pixels. The output |bbox| is a 2x2 matrix [r1,r2; c1,c2] where
+% 
+% * r1 and r2 are the first and last row indices, and 
+% * c1 and c2 are the first and last column indices.
+%
+% The largest rectangle spans from pixel (r1,c1) to pixel (r2,c2) inclusive:
+mask = false(9,9);
+mask(2:3, 2:5) = true;  % 2x4 rectangle (area 8)
+mask(3:5, 3:7) = true   % 3x5 rectangle (area 15)
+bbox = findLargestBox2D(mask)
+%% Input Index Vector
+% Instead of providing a matrix, you can supply two vectors containing the
+% row and column indices of usable pixels. This is particularly useful when
+% working with the output of |find| or when you already have index data.
+% In general this format provides memory savings compared to a full matrix.
+[rows, cols] = find(mask);
+bbox = findLargestBox2D(rows, cols)
+%% Input Sparse Matrix
+% For large matrices this input format may provide memory savings.
+% The function processes one row at a time rather than converting the
+% entire sparse matrix to full.
+% Note that for sparse matrices any non-zero value is treated as TRUE
+% (usable), while zero values are treated as FALSE (blocked).
+mask = sparse(10000, 10000);
+mask(1000:1010, 2000:2050) = 1;  % 11x51 rectangle
+bbox = findLargestBox2D(mask)
+%% 2nd Output: Area
+% The second output returns the area of the largest rectangle in pixels:
+[~, area] = findLargestBox2D(mask)
+%% 3rd Output: Information Structure
+% The third output |info| provides data about the function execution:
+[~, ~, info] = findLargestBox2D(mask) % 11x51 = 561
+%% 3rd Output: Box Substructure
+% If a rectangle is found then the |info.box| substructure provides
+% comprehensive geometric information about the rectangle.
+% The |corners| field gives fractional coordinates (pixel centers are at
+% integer coordinates, so corners are offset by 0.5). The |center| field
+% indicates where the diagonals of the rectangle intersect.
+info.box
+%% Empty or No Valid Rectangle
+% If the input contains no usable pixels (e.g. all FALSE), the function
+% returns an empty |bbox| and zero area:
+mask = false(5,5);  % all blocked pixels
+[bbox, area] = findLargestBox2D(mask)
+%% Complex Pattern Example
+% A more complex mask demonstrating the algorithm finding the optimal
+% rectangle among multiple irregular regions:
+mask = false(15,15);
+mask(2:4, 2:6) = true;    % 3x5 rectangle
+mask(6:9, 8:14) = true;   % 4x7 rectangle (largest: area 28)
+mask(11:13, 2:4) = true;  % 3x3 rectangle
+[bbox, area] = findLargestBox2D(mask)
+%% Efficiency of Indices and Sparse Data
+% The function is particularly efficient for index data. Using the
+% index vector input or sparse matrix input avoids creating full matrices.
+%
+% Note that runtime is heavily dependent on the data density, the number
+% of rectangles, the provided data type, etc. There is no simple way to
+% predict which format will require the least memory or runtime.
+%
+% For example, a 9999x9999 mask with a small usable region:
+mask = false(9999,9999);
+mask(8888,8888) = true;
+mask(432:456,543:567) = true;
+[bboxL, areaL, infoL] = findLargestBox2D(mask);
+
+[rows,cols] = find(mask);
+[bboxI, areaI, infoI] = findLargestBox2D(rows, cols);
+
+[rows, cols] = meshgrid(432:456, 543:567);
+rows = [rows(:);8888];
+cols = [cols(:);8888];
+[bboxJ, areaJ, infoJ] = findLargestBox2D(rows, cols);
+
+mask = sparse(rows,cols,1);
+[bboxS, areaS, infoS] = findLargestBox2D(mask);
+
+isequal(bboxL,bboxI,bboxJ,bboxS)
+isequal(areaL,areaI,areaJ,areaS)
+
+fprintf('%9.6f seconds for %s\n',...
+	infoL.timeTotal, 'logical matrix',...
+	infoI.timeTotal, 'indices (from logical matrix)',...
+	infoJ.timeTotal, 'indices (from meshgrid)',...
+	infoS.timeTotal, 'sparse matrix')
+
+##### SOURCE END #####
+-->
+</body>
+</html>

@@ -1,130 +1,190 @@
 %% |FINDLARGESTBOX3D| Examples
 % The function <https://www.mathworks.com/matlabcentral/fileexchange/######
-% |findLargestBox3D|> finds the maximum-volume axis-aligned cuboid
-% within a 3D logical mask using an exact slab-collapse algorithm.
-% The function accepts input as a logical 3D array or as three index vectors
-% for row, column, and page coordinates. This document demonstrates the
-% different input formats and output arguments with practical examples.
+% |findLargestBox3D|> finds the maximum-volume axis-aligned cuboid(s)
+% within a 3D boolean mask using an exact slab-collapse algorithm.
 %
-%% Basic Usage: Logical 3D Array
-% |findLargestBox3D| accepts a 3D logical array where TRUE indicates
-% usable voxels and FALSE indicates blocked voxels. The function returns
-% the bounding box corners of the largest rectangular cuboid consisting
-% entirely of TRUE voxels.
-% The output |bbox| is a 3x2 matrix [r1,r2; c1,c2; p1,p2] where
+% The mask can be provided either as a 3D logical/numeric array, or as
+% three vectors of voxel indices. Optional name-value arguments allow the
+% user to specify the maximum number of matches, as well as limits on the
+% cuboid height(s), width(s), depth(s), and volume(s).
 %
-% * r1 and r2 are the first and last row indices,
-% * c1 and c2 are the first and last column indices, and
-% * p1 and p2 are the first and last page indices.
+% Internally, |findLargestBox3D| collapses along the smallest mask
+% dimension and calls |findLargestBox2D| on each 2D slab footprint.
 %
-% The largest box spans from voxel (r1,c1,p1) to voxel (r2,c2,p2) inclusive:
-mask = false(9,9,9);
-mask(2:3, 2:5, 2:4) = true;  % 2x4x3 box (volume 24)
-mask(3:5, 3:7, 3:6) = true;  % 3x5x4 box (volume 60)
+%% Basic Usage: 3D Array
+%
+% |findLargestBox3D| accepts a 3D logical or numeric array where
+% |TRUE|/non-zero indicates usable voxels and |FALSE|/zero indicates
+% blocked voxels. It returns the bounding box of the largest cuboid
+% consisting entirely of |TRUE|/non-zero voxels.
+mask = false(9,14,6);
+mask(2:4, 2:8, 2:3) = true; % 3x7x2 = 42
 bbox = findLargestBox3D(mask)
-%% Input Index Vectors
-% Instead of providing a 3D array, you can supply three vectors containing
-% the row, column, and page indices of usable voxels. This is particularly
-% useful when working with the output of |ind2sub| or when you already have
-% coordinate data.
-% In general this format provides memory savings compared to a full array.
-[vxr, vxc, vxp] = ind2sub(size(mask), find(mask));
-bbox = findLargestBox3D(vxr, vxc, vxp)
-%% 2nd Output: Volume
-% The second output returns the volume of the largest box in voxels:
-[~, volume] = findLargestBox3D(mask)
-%% 3rd Output: Information Structure
-% The third output |info| provides data about the function execution:
-[~, ~, info] = findLargestBox3D(mask)
-%% 3rd Output: Box Substructure
-% If a cuboid is found then the |info.box| substructure provides
-% comprehensive geometric information about the cuboid.
-% The |corners| field gives fractional coordinates (voxel centers are at
-% integer coordinates, so corners are offset by 0.5). The |center| field
-% indicates where the diagonals of the cuboid intersect.
-% The |area| field gives the total surface area.
+%% Output 1: |bbox| -- Bounding Box Indices
+%
+% The first output |bbox| is an *Nx6* matrix with one row per cuboid found.
+% Its columns are |[r1, r2, c1, c2, p1, p2]|:
+%
+% * |r1|, |r2| -- the first and last *row* indices of the cuboid.
+% * |c1|, |c2| -- the first and last *column* indices of the cuboid.
+% * |p1|, |p2| -- the first and last *page* indices of the cuboid.
+%
+% The cuboid spans voxels |(r1,c1,p1)| to |(r2,c2,p2)| inclusive.
+% When only one cuboid is found, |bbox| is a 1x6 row vector.
+mask(5:7, 2:12, 2:4) = true; % 3x11x3 = 99
+bbox = findLargestBox3D(mask)
+%% Output 2: |dims| -- Cuboid Dimensions
+%
+% The second output |dims| is an *Nx3* matrix with columns
+% |[height,width,depth]| giving the voxel dimensions of each cuboid found:
+[bbox,dims] = findLargestBox3D(mask)
+%% Output 3: |volume| -- Cuboid Volume
+%
+% The third output |volume| is a scalar equal to |height * width * depth|
+% of all of the largest cuboid(s):
+[bbox,dims,volume] = findLargestBox3D(mask)
+%% Output 4: |info| -- Information Structure
+%
+% The fourth output |info| is a structure that captures geometry and
+% execution metadata. It contains the following fields:
+%
+% * |info.options|        -- the resolved option values used.
+% * |info.numBoxes|       -- the number of cuboids returned.
+% * |info.inputFormat|    -- 'array' or 'indices'.
+% * |info.slabDimension|  -- dimension used for slab iteration (1, 2, or 3).
+% * |info.slabsProcessed| -- number of slab pairs processed.
+% * |info.timeTotal|      -- total execution time in seconds.
+% * |info.time2DFun|      -- time spent inside |findLargestBox2D|.
+%
+% When at least one cuboid is found, |info| contains the nested structure
+% array |.box| with size Nx1, which has the following fields:
+%
+% * |info.box.indices|  -- |[r1,r2,c1,c2,p1,p2]| (same as one row of |bbox|).
+% * |info.box.corners|  -- fractional voxel-edge coordinates:
+%                         |[r1-0.5,r2+0.5,c1-0.5,c2+0.5,p1-0.5,p2+0.5]|.
+% * |info.box.diagonal| -- diagonal length (in voxels, may be fractional).
+% * |info.box.center|   -- where the diagonals meet (may be fractional).
+% * |info.box.height|   -- the height in voxels.
+% * |info.box.width|    -- the width in voxels.
+% * |info.box.depth|    -- the depth in voxels.
+% * |info.box.volume|   -- the volume in voxels.
+% * |info.box.area|     -- the total surface area.
+%
+[~,~,~,info] = findLargestBox3D(mask)
 info.box
-%% Empty or No Valid Box
-% If the input contains no usable voxels (e.g. all FALSE), the function
-% returns an empty |bbox| and zero volume:
-mask = false(5,5,5);  % all blocked voxels
-[bbox, volume] = findLargestBox3D(mask)
-%% Slab Dimension Selection
-% The algorithm automatically chooses the smallest dimension for slab
-% iteration to minimize computational cost. For a tall thin volume the
-% rows become the slab dimension, while for a wide flat volume the pages
-% become the slab dimension:
-mask1 = false(9,99,99);
-mask1(2:8, 5:45, 5:45) = true; % dim 1 narrow
-[~, ~, info1] = findLargestBox3D(mask1);
-info1.slabDimension
-
-mask2 = false(99,99,9);
-mask2(5:45, 5:45, 2:8) = true; % dim 3 narrow
-[~, ~, info2] = findLargestBox3D(mask2);
-info2.slabDimension
-%% Complex Pattern Example
-% A more complex mask demonstrating the algorithm finding the optimal box
-% among multiple irregular 3D regions:
-mask = false(15,15,15);
-mask(2:4, 2:6, 2:5) = true;    % 3x5x4 box (volume 60)
-mask(6:10, 8:14, 8:12) = true; % 5x7x5 box (volume 175)
-mask(11:13, 2:4, 11:13) = true; % 3x3x3 box (volume 27)
-[bbox, volume] = findLargestBox3D(mask)
-%% L-Shaped Region
-% For non-convex regions the function finds the largest box that fits
-% within the available space:
-mask = false(10,10,10);
-mask(2:8, 2:4, 2:8) = true;   % Vertical part of L
-mask(2:4, 2:8, 2:8) = true;   % Horizontal part of L
-[bbox, volume] = findLargestBox3D(mask)
-%% Practical Application: 3D Space Planning
-% A typical use case is finding the largest rectangular volume in a 3D
-% space with obstacles, such as warehouse storage or 3D bin packing:
-mask = false(30,40,25);
-mask(5:25, 5:35, 5:20) = true;             % Available storage space
-mask(12:14, 15:18, 5:20) = false;          % Column 1
-mask(18:20, 25:28, 5:20) = false;          % Column 2
-mask(8:11, 10:13, 12:15) = false;          % Existing item
-[bbox, volume, info] = findLargestBox3D(mask);
-fprintf('Largest available box: %dx%dx%d voxels (volume %d)\n', ...
-    info.box.height, info.box.width, info.box.depth, volume)
-%% Efficiency of Indices and Logical Arrays
-% The function accepts either a logical 3D array or index vectors. Using
-% index vectors avoids creating large 3D arrays in memory and processes
-% coordinates directly without materializing the full mask.
+%% Inputs 1, 2 & 3: Index Vectors
 %
-% Note that runtime is heavily dependent on the data density, the number
-% of boxes, the provided data type, and the dimensions. There is no simple
-% way to predict which format will require the least memory or runtime.
+% Instead of a full 3D array, you can supply three vectors of row, column,
+% and page indices of the usable voxels. This is convenient when working
+% with the output of |find| and |ind2sub| and avoids constructing a large
+% dense mask.
 %
-% For example, a 999x999x999 mask with a small usable region:
-mask = false(999,999,999);
-mask(123,456,789) = true;
-mask(44:55, 44:66, 44:77) = true;
-[bboxL, volumeL, infoL] = findLargestBox3D(mask);
-
-[vxr, vxc, vxp] = ind2sub(size(mask), find(mask));
-[bboxI, volumeI, infoI] = findLargestBox3D(vxr, vxc, vxp);
-
-[vxr, vxc, vxp] = ndgrid(44:55, 44:66, 44:77);
-vxr = [vxr(:);123];
-vxc = [vxc(:);456];
-vxp = [vxp(:);789];
-[bboxJ, volumeJ, infoJ] = findLargestBox3D(vxr, vxc, vxp);
-
-isequal(bboxL,bboxI,bboxJ)
-isequal(volumeL,volumeI,volumeJ)
-
-fprintf('%9.6f seconds for %s\n',...
-	infoL.timeTotal, 'logical array',...
-	infoI.timeTotal, 'indices (from logical array)',...
-	infoJ.timeTotal, 'indices (from ndgrid)')
+% All four output arguments are identical to the array-input form:
+[vxR, vxC, vxP] = ind2sub(size(mask), find(mask));
+[bbox,dims,volume] = findLargestBox3D(vxR, vxC, vxP)
+%% Multiple Cuboids of Equal Largest Volume
+%
+% When multiple cuboids have the same largest volume then by default all
+% *N* of them are returned. These cuboids may *overlap*!
+% Output |bbox| will then have size *Nx6* (one row per cuboid), and
+% |info.box| will be an *Nx1* struct array (one element per cuboid).
+%
+% Here the mask contains two cuboids both with volume=42:
+mask = false(14,15,9);
+mask(2:4, 2:8, 2:3) = true; % 3x7x2 = 42
+mask(6:12, 10:12, 6:7) = true;  % 7x3x2 = 42
+[bbox,dims,volume] = findLargestBox3D(mask)
+%% Option |maxN| -- Limit Number of Results
+%
+% Use the |'maxN'| option to limit the number of cuboids returned.
+% This is useful when you only need the first occurrence, or when memory
+% usage from many duplicates is a concern.
+%
+% For example, setting |maxN=1| returns a maximum of one cuboid:
+findLargestBox3D(mask, 'maxN',Inf) % default all
+findLargestBox3D(mask, 'maxN',1)   % 1st cuboid only
+%% Options |minVolume| and |maxVolume| -- Volume Constraints
+%
+% |'minVolume'| and |'maxVolume'| set inclusive bounds on the volume
+% (in voxels) of returned cuboids. Note that cuboids may *overlap!*:
+mask = false(16, 13, 9);
+mask(2:3, 2:4, 2:8) = true; % 2x3x7 = 42
+mask(5:7, 2:12, 2:4) = true; % 3x11x3 = 99
+mask(9:15, 6:8, 2:4) = true; % 7x3x3 = 63
+[bbox,~,volume] = findLargestBox3D(mask, 'maxVolume',46)
+[bbox,~,volume] = findLargestBox3D(mask, 'minVolume',64)
+%% Options |minHeight| and |maxHeight| -- Height Constraints
+%
+% |'minHeight'| and |'maxHeight'| restrict the number of rows the returned
+% cuboid may span:
+[~,dims,~] = findLargestBox3D(mask, 'maxHeight',4)
+[~,dims,~] = findLargestBox3D(mask, 'minHeight',4)
+%% Options |minWidth| and |maxWidth| -- Width Constraints
+%
+% |'minWidth'| and |'maxWidth'| restrict the number of columns the returned
+% cuboid may span:
+[~,dims,~] = findLargestBox3D(mask, 'maxWidth',8)
+[~,dims,~] = findLargestBox3D(mask, 'minWidth',5)
+%% Options |minDepth| and |maxDepth| -- Depth Constraints
+%
+% |'minDepth'| and |'maxDepth'| restrict the number of pages the returned
+% cuboid may span:
+[~,dims,~] = findLargestBox3D(mask, 'maxDepth',5)
+[~,dims,~] = findLargestBox3D(mask, 'minDepth',4)
+%% Option |display| -- Show Function Progress
+%
+% The |'display'| option accepts one of the following three values:
+%
+% * |'silent'| : no progress display.
+% * |'waitbar'|: MATLAB progress bar, with estimated time remaining (ETR).
+% * |'verbose'|: prints progress in the command window, with ETR.
+%
+%% Options as a Struct
+%
+% All options can equivalently be passed as a scalar struct whose field
+% names match the option names (case-insensitive). This is convenient
+% when you want to build options programmatically or share them across
+% multiple calls:
+opts = struct('maxN',1, 'minDepth',5);
+findLargestBox3D(mask, opts)
+%% Empty or No Valid Cuboid
+%
+% If the mask contains no usable voxels, or if no cuboid satisfies the
+% active constraints, the function returns empty arrays for |bbox| and
+% |dims|, zero for |volume|, and an |info| struct without |info.box| field:
+[bbox,dims,volume] = findLargestBox3D(mask, 'minVolume',999)
+%% Performance Comparison Across Input Formats
+%
+% The two input formats (logical/numeric array, index vectors) can differ
+% substantially in memory use and runtime depending on mask size and
+% density. There is no universally fastest format; the example below times
+% both on a moderately sized volume that is safe to run interactively.
+%
+% Both formats must produce identical results -- verified with |isequal|:
+sz = [99, 76, 42];
+maskL = false(sz);
+maskL(12:42, 12:42, 6:30) = true; % 31x31x25 = 24025
+maskL(76, 42, 23) = true; % 1x1x1 = 1
+%
+[vxR, vxC, vxP] = ind2sub(sz, find(maskL));
+%
+[bboxL, dimsL, volL, infoL] = findLargestBox3D(maskL);
+[bboxI, dimsI, volI, infoI] = findLargestBox3D(vxR, vxC, vxP);
+%
+isequal(bboxL,bboxI)
+isequal(dimsL,dimsI)
+isequal(volL,volI)
+%
+fprintf('%8.4f s  3D array\n',      infoL.timeTotal)
+fprintf('%8.4f s  index vectors\n', infoI.timeTotal)
 %% Dependency on |findLargestBox2D|
-% The 3D function requires |findLargestBox2D| to analyze each 2D slab.
-% Make sure |findLargestBox2D.m| is on your MATLAB path. The |info|
-% structure reports how much time was spent in the 2D function:
-mask = false(20,20,20);
-mask(5:15, 6:16, 7:17) = true;
-[~, ~, info] = findLargestBox3D(mask);
-fprintf('%.0f%% of runtime is the 2D function',100*info.time2DFun./info.timeTotal);
+%
+% The 3D function calls |findLargestBox2D| on each 2D slab footprint.
+% Ensure |findLargestBox2D.m| is on your MATLAB path. The |info| structure
+% reports how much time was spent calling |findLargestBox2D| as well as
+% its own total running time:
+mask = false(40, 50, 30);
+mask(10:30, 15:40, 5:25) = true;
+[~, ~, ~, info] = findLargestBox3D(mask);
+info.time2DFun
+info.timeTotal

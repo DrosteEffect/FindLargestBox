@@ -9,7 +9,7 @@ To make changes, update the MATLAB code and republish this document.
 <title>FINDLARGESTBOX2D Examples</title>
 <meta name="generator" content="MATLAB 25.2">
 <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
-<meta name="DC.date" content="2026-02-08">
+<meta name="DC.date" content="2026-02-21">
 <meta name="DC.source" content="findLargestBox2D_doc.m">
 <style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
@@ -79,176 +79,350 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <h1>
 <tt>FINDLARGESTBOX2D</tt> Examples</h1>
 <!--introduction-->
-<p>The function <a href="https://www.mathworks.com/matlabcentral/fileexchange/######"><tt>findLargestBox2D</tt></a> finds the maximum-area axis-aligned rectangle within a 2D logical mask using an efficient <a href="https://en.wikipedia.org/wiki/Big_O_notation">O(rows*cols)</a> histogram- based algorithm. The function accepts input as a logical matrix, a sparse matrix, or as row index and column index vectors. This document demonstrates the different input formats and output arguments with practical examples.</p>
+<p>The function <a href="https://www.mathworks.com/matlabcentral/fileexchange/######"><tt>findLargestBox2D</tt></a> finds the maximum-area axis-aligned rectangle(s) within a 2D boolean mask using a reasonably efficient <a href="https://en.wikipedia.org/wiki/Big_O_notation">O(rows*cols)</a> histogram-based algorithm.</p>
+<p>The function accepts the mask as a logical matrix, a numeric matrix, a sparse matrix, or as row- and column-index vectors. Optional name-value arguments allow the user to specify the maximum number of matches, as well as limits on the rectangle width(s), height(s) and area(s).</p>
 <!--/introduction-->
 <h2>Contents</h2>
 <div>
 <ul>
 <li>
-<a href="#1">Basic Usage: Logical 2D Matrix</a>
+<a href="#1">Basic Usage: 2D Matrix</a>
 </li>
 <li>
-<a href="#2">Input Index Vector</a>
+<a href="#2">Output 1: <tt>bbox</tt> -- Bounding Box Indices</a>
 </li>
 <li>
-<a href="#3">Input Sparse Matrix</a>
+<a href="#3">Output 2: <tt>dims</tt> -- Rectangle Dimensions</a>
 </li>
 <li>
-<a href="#4">2nd Output: Area</a>
+<a href="#4">Output 3: <tt>area</tt> -- Rectangle Area</a>
 </li>
 <li>
-<a href="#5">3rd Output: Information Structure</a>
+<a href="#5">Output 4: <tt>info</tt> -- Information Structure</a>
 </li>
 <li>
-<a href="#6">3rd Output: Box Substructure</a>
+<a href="#6">Input 1: Sparse Matrix</a>
 </li>
 <li>
-<a href="#7">Empty or No Valid Rectangle</a>
+<a href="#7">Inputs 1 &amp; 2: Index Vectors</a>
 </li>
 <li>
-<a href="#8">Complex Pattern Example</a>
+<a href="#8">Multiple Rectangles of Equal Largest Area</a>
 </li>
 <li>
-<a href="#9">Efficiency of Indices and Sparse Data</a>
+<a href="#9">Option <tt>maxN</tt> -- Limit Number of Results</a>
+</li>
+<li>
+<a href="#10">Options <tt>minArea</tt> and <tt>maxArea</tt> -- Area Constraints</a>
+</li>
+<li>
+<a href="#11">Options <tt>minHeight</tt> and <tt>maxHeight</tt> -- Height Constraints</a>
+</li>
+<li>
+<a href="#12">Options <tt>minWidth</tt> and <tt>maxWidth</tt> -- Width Constraints</a>
+</li>
+<li>
+<a href="#13">Option <tt>display</tt> -- Show Function Progress</a>
+</li>
+<li>
+<a href="#14">Options as a Struct</a>
+</li>
+<li>
+<a href="#15">Empty or No Valid Rectangle</a>
+</li>
+<li>
+<a href="#16">Performance Comparison Across Input Formats</a>
+</li>
+<li>
+<a href="#17">Interactive GUI (R2020b or later)</a>
 </li>
 </ul>
 </div>
-<h2 id="1">Basic Usage: Logical 2D Matrix</h2>
+<h2 id="1">Basic Usage: 2D Matrix</h2>
 <p>
-<tt>findLargestBox2D</tt> accepts a 2D logical matrix where TRUE indicates usable pixels and FALSE indicates blocked pixels. The function returns the bounding box corners of the largest rectangle consisting entirely of TRUE pixels. The output <tt>bbox</tt> is a 2x2 matrix [r1,r2; c1,c2] where</p>
+<tt>findLargestBox2D</tt> accepts a 2D logical or numeric matrix where <tt>TRUE</tt>/non-zero indicates usable pixels and <tt>FALSE</tt>/zero indicates blocked pixels. It returns the bounding box of the largest rectangle consisting entirely of <tt>TRUE</tt>/non-zero pixels.</p>
+<pre class="codeinput">mask = false(9,9);
+mask(2:3, 2:5) = true; <span class="comment">% 2x4 = 8</span>
+bbox = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">bbox =
+     2     3     2     5
+</pre>
+<h2 id="2">Output 1: <tt>bbox</tt> -- Bounding Box Indices</h2>
+<p>The first output <tt>bbox</tt> is an <b>Nx4</b> matrix with one row per rectangle found. Its columns are <tt>[r1, r2, c1, c2]</tt>:</p>
 <div>
 <ul>
-<li>r1 and r2 are the first and last row indices, and</li>
-<li>c1 and c2 are the first and last column indices.</li>
+<li>
+<tt>r1</tt>, <tt>r2</tt> -- the first and last <b>row</b> indices of the rectangle.</li>
+<li>
+<tt>c1</tt>, <tt>c2</tt> -- the first and last <b>column</b> indices of the rectangle.</li>
 </ul>
 </div>
-<p>The largest rectangle spans from pixel (r1,c1) to pixel (r2,c2) inclusive:</p>
-<pre class="codeinput">mask = false(9,9);
-mask(2:3, 2:5) = true;  <span class="comment">% 2x4 rectangle (area 8)</span>
-mask(3:5, 3:7) = true   <span class="comment">% 3x5 rectangle (area 15)</span>
-bbox = findLargestBox2D(mask)
-</pre>
-<pre class="codeoutput">mask =
-  9&times;9 logical array
-   0   0   0   0   0   0   0   0   0
-   0   1   1   1   1   0   0   0   0
-   0   1   1   1   1   1   1   0   0
-   0   0   1   1   1   1   1   0   0
-   0   0   1   1   1   1   1   0   0
-   0   0   0   0   0   0   0   0   0
-   0   0   0   0   0   0   0   0   0
-   0   0   0   0   0   0   0   0   0
-   0   0   0   0   0   0   0   0   0
-bbox =
-     3     5
-     3     7
-</pre>
-<h2 id="2">Input Index Vector</h2>
-<p>Instead of providing a matrix, you can supply two vectors containing the row and column indices of usable pixels. This is particularly useful when working with the output of <tt>find</tt> or when you already have index data. In general this format provides memory savings compared to a full matrix.</p>
-<pre class="codeinput">[rows, cols] = find(mask);
-bbox = findLargestBox2D(rows, cols)
-</pre>
-<pre class="codeoutput">bbox =
-     3     5
-     3     7
-</pre>
-<h2 id="3">Input Sparse Matrix</h2>
-<p>For large matrices this input format may provide memory savings. The function processes one row at a time rather than converting the entire sparse matrix to full. Note that for sparse matrices any non-zero value is treated as TRUE (usable), while zero values are treated as FALSE (blocked).</p>
-<pre class="codeinput">mask = sparse(10000, 10000);
-mask(1000:1010, 2000:2050) = 1;  <span class="comment">% 11x51 rectangle</span>
+<p>The rectangle spans pixels <tt>(r1,c1)</tt> to <tt>(r2,c2)</tt> inclusive. When only one rectangle is found <tt>bbox</tt> is a 1x4 row vector.</p>
+<pre class="codeinput">mask(3:5, 3:7) = true; <span class="comment">% 3x5 = 15</span>
 bbox = findLargestBox2D(mask)
 </pre>
 <pre class="codeoutput">bbox =
-        1000        1010
-        2000        2050
+     3     5     3     7
 </pre>
-<h2 id="4">2nd Output: Area</h2>
-<p>The second output returns the area of the largest rectangle in pixels:</p>
-<pre class="codeinput">[~, area] = findLargestBox2D(mask)
+<h2 id="3">Output 2: <tt>dims</tt> -- Rectangle Dimensions</h2>
+<p>The second output <tt>dims</tt> is an <b>Nx2</b> matrix with columns <tt>[height,width]</tt> giving the pixel dimensions of each rectangle found:</p>
+<pre class="codeinput">[bbox,dims] = findLargestBox2D(mask)
 </pre>
-<pre class="codeoutput">area =
-   561
+<pre class="codeoutput">bbox =
+     3     5     3     7
+dims =
+     3     5
 </pre>
-<h2 id="5">3rd Output: Information Structure</h2>
-<p>The third output <tt>info</tt> provides data about the function execution:</p>
-<pre class="codeinput">[~, ~, info] = findLargestBox2D(mask) <span class="comment">% 11x51 = 561</span>
+<h2 id="4">Output 3: <tt>area</tt> -- Rectangle Area</h2>
+<p>The third output <tt>area</tt> is a scalar equal to <tt>height * width</tt> of all of the largest rectangle(s):</p>
+<pre class="codeinput">[bbox,dims,area] = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">bbox =
+     3     5     3     7
+dims =
+     3     5
+area =
+    15
+</pre>
+<h2 id="5">Output 4: <tt>info</tt> -- Information Structure</h2>
+<p>The fourth output <tt>info</tt> is a structure that captures geometry and execution metadata. It contains the following fields:</p>
+<div>
+<ul>
+<li>
+<tt>info.options</tt> -- the resolved option values used.</li>
+<li>
+<tt>info.numBoxes</tt> -- the number of rectangles returned.</li>
+<li>
+<tt>info.inputFormat</tt> -- 'matrix', 'indices', or 'sparse'.</li>
+<li>
+<tt>info.rowsProcessed</tt> -- number of mask rows visited.</li>
+<li>
+<tt>info.timeTotal</tt> -- total execution time in seconds.</li>
+</ul>
+</div>
+<p>When at least one rectangle is found, <tt>info</tt> contains the nested structure array <tt>.box</tt> with size Nx1, which has the following fields:</p>
+<div>
+<ul>
+<li>
+<tt>info.box.indices</tt> -- <tt>[r1,r2,c1,c2]</tt> (same as one row of <tt>bbox</tt>).</li>
+<li>
+<tt>info.box.corners</tt> -- fractional pixel-edge coordinates <tt>[r1-0.5,r2+0.5,c1-0.5,c2+0.5]</tt>.</li>
+<li>
+<tt>info.box.diagonal</tt> -- the diagonal length (may be fractional).</li>
+<li>
+<tt>info.box.center</tt> -- where the diagonals meet (may be fractional).</li>
+<li>
+<tt>info.box.height</tt> -- the height in pixels.</li>
+<li>
+<tt>info.box.width</tt> -- the width in pixels.</li>
+<li>
+<tt>info.box.area</tt> -- the area in pixels.</li>
+<li>
+<tt>info.box.perimeter</tt> -- the perimeter length in pixels.</li>
+</ul>
+</div>
+<pre class="codeinput">[~,~,~,info] = findLargestBox2D(mask)
+info.box
 </pre>
 <pre class="codeoutput">info = 
   struct with fields:
 
-    rowsProcessed: 11
-      inputFormat: 'sparse'
+          options: [1&times;1 struct]
+    rowsProcessed: 4
+         numBoxes: 1
+      inputFormat: 'matrix'
               box: [1&times;1 struct]
-        timeTotal: 0.0018467
-</pre>
-<h2 id="6">3rd Output: Box Substructure</h2>
-<p>If a rectangle is found then the <tt>info.box</tt> substructure provides comprehensive geometric information about the rectangle. The <tt>corners</tt> field gives fractional coordinates (pixel centers are at integer coordinates, so corners are offset by 0.5). The <tt>center</tt> field indicates where the diagonals of the rectangle intersect.</p>
-<pre class="codeinput">info.box
-</pre>
-<pre class="codeoutput">ans = 
+        timeTotal: 0.001584
+ans = 
   struct with fields:
 
-      indices: [2&times;2 double]
-      corners: [2&times;2 double]
-       center: [2&times;1 double]
-       height: 11
-        width: 51
-         area: 561
-    perimeter: 124
-     diagonal: 52.173
+      indices: [3 5 3 7]
+      corners: [2.5 5.5 2.5 7.5]
+       center: [4 5]
+       height: 3
+        width: 5
+         area: 15
+    perimeter: 16
+     diagonal: 5.831
 </pre>
-<h2 id="7">Empty or No Valid Rectangle</h2>
-<p>If the input contains no usable pixels (e.g. all FALSE), the function returns an empty <tt>bbox</tt> and zero area:</p>
-<pre class="codeinput">mask = false(5,5);  <span class="comment">% all blocked pixels</span>
-[bbox, area] = findLargestBox2D(mask)
+<h2 id="6">Input 1: Sparse Matrix</h2>
+<p>For very large but sparsely populated grids, pass a sparse matrix. Any non-zero element is treated as <tt>TRUE</tt> (usable); zeros are <tt>FALSE</tt>. The function processes one row at a time, so it never materialises the full dense matrix -- this can give significant memory savings:</p>
+<pre class="codeinput">mask = sparse(10000, 10000);
+mask(1000:1010, 2000:2050) = 1; <span class="comment">% 11x51 = 561</span>
+[bbox,dims,area] = findLargestBox2D(mask)
 </pre>
 <pre class="codeoutput">bbox =
+        1000        1010        2000        2050
+dims =
+    11    51
+area =
+   561
+</pre>
+<h2 id="7">Inputs 1 &amp; 2: Index Vectors</h2>
+<p>Instead of a full matrix, you can supply two vectors of row and column indices of the usable pixels. This is convenient when working with the output of <tt>find</tt> and avoids constructing a large dense matrix. All four output arguments are identical to the matrix-input form:</p>
+<pre class="codeinput">[pixR, pixC] = find(mask);
+[bbox,dims,area] = findLargestBox2D(pixR, pixC)
+</pre>
+<pre class="codeoutput">bbox =
+        1000        1010        2000        2050
+dims =
+    11    51
+area =
+   561
+</pre>
+<h2 id="8">Multiple Rectangles of Equal Largest Area</h2>
+<p>When multiple rectangles have the same largest area then by default all <b>N</b> of them are returned. These rectangles may <b>overlap</b>! Output <tt>bbox</tt> will then have size <b>Nx4</b> (one row per rectangle), and <tt>info.box</tt> will be an <b>Nx1</b> struct array (one element per rectangle).</p>
+<p>Here the mask contains two rectangles both with area=20:</p>
+<pre class="codeinput">mask = false(10, 20);
+mask(2:5, 2:6) = true; <span class="comment">% 4x5 = 20</span>
+mask(3:7, 15:18) = true; <span class="comment">% 5x4 = 20</span>
+[bbox,dims,area,info] = findLargestBox2D(mask)
+</pre>
+<pre class="codeoutput">bbox =
+     2     5     2     6
+     3     7    15    18
+dims =
+     4     5
+     5     4
+area =
+    20
+info = 
+  struct with fields:
+
+          options: [1&times;1 struct]
+    rowsProcessed: 6
+         numBoxes: 2
+      inputFormat: 'matrix'
+              box: [2&times;1 struct]
+        timeTotal: 0.0025431
+</pre>
+<h2 id="9">Option <tt>maxN</tt> -- Limit Number of Results</h2>
+<p>Use the <tt>'maxN'</tt> option to limit the number of rectangles returned. This is useful when you only need the first occurrence, or when memory usage from many duplicates is a concern.</p>
+<p>For example, setting <tt>maxN=1</tt> returns a maximum of one rectangle:</p>
+<pre class="codeinput">findLargestBox2D(mask, <span class="string">'maxN'</span>,Inf) <span class="comment">% default all</span>
+findLargestBox2D(mask, <span class="string">'maxN'</span>,1) <span class="comment">% 1st rectangle only</span>
+</pre>
+<pre class="codeoutput">ans =
+     2     5     2     6
+     3     7    15    18
+ans =
+     2     5     2     6
+</pre>
+<h2 id="10">Options <tt>minArea</tt> and <tt>maxArea</tt> -- Area Constraints</h2>
+<p>
+<tt>'minArea'</tt> and <tt>'maxArea'</tt> set inclusive bounds on the area (in pixels) of returned rectangles. Note that rectangles may <b>overlap</b>!</p>
+<pre class="codeinput">mask = false(15,15);
+mask(2:4, 2:6) = true; <span class="comment">% 3x5 = 15</span>
+mask(6:9, 8:14) = true; <span class="comment">% 4x7 = 28</span>
+mask(11:13,2:4) = true; <span class="comment">% 3x3 = 9</span>
+findLargestBox2D(mask, <span class="string">'maxArea'</span>,10)
+findLargestBox2D(mask, <span class="string">'maxArea'</span>,20, <span class="string">'minArea'</span>,10)
+</pre>
+<pre class="codeoutput">ans =
+     2     3     2     6
+     3     4     2     6
+     6     7     8    12
+     6     7     9    13
+     6     7    10    14
+     7     8     8    12
+     7     8     9    13
+     7     8    10    14
+     8     9     8    12
+     8     9     9    13
+     8     9    10    14
+ans =
+     6     9     8    12
+     6     9     9    13
+     6     9    10    14
+</pre>
+<h2 id="11">Options <tt>minHeight</tt> and <tt>maxHeight</tt> -- Height Constraints</h2>
+<p>
+<tt>'minHeight'</tt> and <tt>'maxHeight'</tt> restrict the number of rows the returned rectangle may span. This is useful when the result must fit a specific aspect ratio or when tall, thin rectangles are undesirable:</p>
+<pre class="codeinput">findLargestBox2D(mask, <span class="string">'maxHeight'</span>,3)
+findLargestBox2D(mask, <span class="string">'minHeight'</span>,4)
+</pre>
+<pre class="codeoutput">ans =
+     6     8     8    14
+     7     9     8    14
+ans =
+     6     9     8    14
+</pre>
+<h2 id="12">Options <tt>minWidth</tt> and <tt>maxWidth</tt> -- Width Constraints</h2>
+<p>
+<tt>'minWidth'</tt> and <tt>'maxWidth'</tt> restrict the number of columns the returned rectangle may span. These work symmetrically with the height constraints:</p>
+<pre class="codeinput">findLargestBox2D(mask, <span class="string">'maxWidth'</span>,3)
+findLargestBox2D(mask, <span class="string">'minWidth'</span>,6)
+</pre>
+<pre class="codeoutput">ans =
+     6     9     8    10
+     6     9     9    11
+     6     9    10    12
+     6     9    11    13
+     6     9    12    14
+ans =
+     6     9     8    14
+</pre>
+<h2 id="13">Option <tt>display</tt> -- Show Function Progress</h2>
+<p>The <tt>'display'</tt> option accepts one of the following three values:</p>
+<div>
+<ul>
+<li>
+<tt>'silent'</tt> : no progress display.</li>
+<li>
+<tt>'waitbar'</tt>: MATLAB progress bar, with estimated time remaining (ETR).</li>
+<li>
+<tt>'verbose'</tt>: prints progress in the command window, with ETR.</li>
+</ul>
+</div>
+<h2 id="14">Options as a Struct</h2>
+<p>All options can equivalently be passed as a scalar struct whose field names match the option names (case-insensitive). This is convenient when you want to build options programmatically or share them across multiple calls:</p>
+<pre class="codeinput">opts = struct(<span class="string">'maxN'</span>,3, <span class="string">'maxWidth'</span>,3);
+findLargestBox2D(mask, opts)
+</pre>
+<pre class="codeoutput">ans =
+     6     9     8    10
+     6     9     9    11
+     6     9    10    12
+</pre>
+<h2 id="15">Empty or No Valid Rectangle</h2>
+<p>If the mask contains no usable pixels, or if no rectangle satisfies the active constraints, the function returns empty arrays for <tt>bbox</tt> and <tt>dims</tt>, zero for <tt>area</tt>, and an <tt>info</tt> struct without <tt>info.box</tt> field:</p>
+<pre class="codeinput">[bbox,dims,area] = findLargestBox2D(mask, <span class="string">'minArea'</span>,99)
+</pre>
+<pre class="codeoutput">bbox =
+     []
+dims =
      []
 area =
      0
 </pre>
-<h2 id="8">Complex Pattern Example</h2>
-<p>A more complex mask demonstrating the algorithm finding the optimal rectangle among multiple irregular regions:</p>
-<pre class="codeinput">mask = false(15,15);
-mask(2:4, 2:6) = true;    <span class="comment">% 3x5 rectangle</span>
-mask(6:9, 8:14) = true;   <span class="comment">% 4x7 rectangle (largest: area 28)</span>
-mask(11:13, 2:4) = true;  <span class="comment">% 3x3 rectangle</span>
-[bbox, area] = findLargestBox2D(mask)
-</pre>
-<pre class="codeoutput">bbox =
-     6     9
-     8    14
-area =
-    28
-</pre>
-<h2 id="9">Efficiency of Indices and Sparse Data</h2>
-<p>The function is particularly efficient for index data. Using the index vector input or sparse matrix input avoids creating full matrices.</p>
-<p>Note that runtime is heavily dependent on the data density, the number of rectangles, the provided data type, etc. There is no simple way to predict which format will require the least memory or runtime.</p>
-<p>For example, a 9999x9999 mask with a small usable region:</p>
-<pre class="codeinput">mask = false(9999,9999);
-mask(8888,8888) = true;
-mask(432:456,543:567) = true;
-[bboxL, areaL, infoL] = findLargestBox2D(mask);
+<h2 id="16">Performance Comparison Across Input Formats</h2>
+<p>The three input formats (logical/numeric matrix, index vectors, sparse matrix) can differ substantially in memory use and runtime depending on mask size and density. There is no universally fastest format; the examples below time all three on a 9999x9999 grid with a small usable region so that you can observe the tradeoffs on your own hardware.</p>
+<p>All formats must produce identical results -- verified with <tt>isequal</tt>:</p>
+<pre class="codeinput">N = 9999;
+<span class="comment">% Logical matrix:</span>
+maskL = false(N, N);
+maskL(432:456, 543:567) = true;
+maskL(8888, 8888)       = true;
+<span class="comment">% Index vectors (from meshgrid, to avoid dependence on maskL):</span>
+[cg, rg] = meshgrid(543:567, 432:456);
+pixR = [rg(:); 8888];
+pixC = [cg(:); 8888];
+<span class="comment">% Sparse matrix</span>
+maskS = sparse(pixR, pixC, 1, N, N);
+<span class="comment">% Find rectangles:</span>
+[bboxL, dimsL, areaL, infoL] = findLargestBox2D(maskL);
+[bboxI, dimsI, areaI, infoI] = findLargestBox2D(pixR, pixC);
+[bboxS, dimsS, areaS, infoS] = findLargestBox2D(maskS);
 
-[rows,cols] = find(mask);
-[bboxI, areaI, infoI] = findLargestBox2D(rows, cols);
+isequal(bboxL,bboxI,bboxS)
+isequal(dimsL,dimsI,dimsS)
+isequal(areaL,areaI,areaS)
 
-[rows, cols] = meshgrid(432:456, 543:567);
-rows = [rows(:);8888];
-cols = [cols(:);8888];
-[bboxJ, areaJ, infoJ] = findLargestBox2D(rows, cols);
-
-mask = sparse(rows,cols,1);
-[bboxS, areaS, infoS] = findLargestBox2D(mask);
-
-isequal(bboxL,bboxI,bboxJ,bboxS)
-isequal(areaL,areaI,areaJ,areaS)
-
-fprintf(<span class="string">'%9.6f seconds for %s\n'</span>,<span class="keyword">...</span>
-	infoL.timeTotal, <span class="string">'logical matrix'</span>,<span class="keyword">...</span>
-	infoI.timeTotal, <span class="string">'indices (from logical matrix)'</span>,<span class="keyword">...</span>
-	infoJ.timeTotal, <span class="string">'indices (from meshgrid)'</span>,<span class="keyword">...</span>
-	infoS.timeTotal, <span class="string">'sparse matrix'</span>)
+fprintf(<span class="string">'%8.4f s  logical matrix\n'</span>,  infoL.timeTotal)
+fprintf(<span class="string">'%8.4f s  index vectors\n'</span>,   infoI.timeTotal)
+fprintf(<span class="string">'%8.4f s  sparse matrix\n'</span>,   infoS.timeTotal)
+<span class="comment">%</span>
 </pre>
 <pre class="codeoutput">ans =
   logical
@@ -256,12 +430,18 @@ fprintf(<span class="string">'%9.6f seconds for %s\n'</span>,<span class="keywor
 ans =
   logical
    1
- 1.813574 seconds for logical matrix
- 0.804278 seconds for indices (from logical matrix)
- 0.786624 seconds for indices (from meshgrid)
- 0.426920 seconds for sparse matrix
+ans =
+  logical
+   1
+  2.0380 s  logical matrix
+  0.8291 s  index vectors
+  0.8423 s  sparse matrix
 </pre>
-<p class="footer">
+<h2 id="17">Interactive GUI (R2020b or later)</h2>
+<p>Try the interactive GUI: select from some interesting example matrices, toggle values by clicking on the image, and see the rectangles!</p>
+<pre class="codeinput">findLargestBox2D_GUI(mask)
+</pre>
+<img vspace="5" hspace="5" src="findLargestBox2D_doc_01.png" alt=""> <p class="footer">
 <br>
 <a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2025b</a>
 <br>
@@ -271,104 +451,193 @@ ans =
 ##### SOURCE BEGIN #####
 %% |FINDLARGESTBOX2D| Examples
 % The function <https://www.mathworks.com/matlabcentral/fileexchange/######
-% |findLargestBox2D|> finds the maximum-area axis-aligned rectangle within
-% a 2D logical mask using an efficient 
-% <https://en.wikipedia.org/wiki/Big_O_notation O(rows*cols)> histogram-
-% based algorithm. The function accepts input as a logical matrix,
-% a sparse matrix, or as row index and column index vectors.
-% This document demonstrates the different input formats and output
-% arguments with practical examples.
+% |findLargestBox2D|> finds the maximum-area axis-aligned rectangle(s)
+% within a 2D boolean mask using a reasonably efficient
+% <https://en.wikipedia.org/wiki/Big_O_notation O(rows*cols)>
+% histogram-based algorithm.
 %
-%% Basic Usage: Logical 2D Matrix
-% |findLargestBox2D| accepts a 2D logical matrix where TRUE indicates
-% usable pixels and FALSE indicates blocked pixels. The function returns
-% the bounding box corners of the largest rectangle consisting entirely of
-% TRUE pixels. The output |bbox| is a 2x2 matrix [r1,r2; c1,c2] where
-% 
-% * r1 and r2 are the first and last row indices, and 
-% * c1 and c2 are the first and last column indices.
+% The function accepts the mask as a logical matrix, a numeric matrix, a
+% sparse matrix, or as row- and column-index vectors. Optional name-value
+% arguments allow the user to specify the maximum number of matches, as
+% well as limits on the rectangle width(s), height(s) and area(s).
 %
-% The largest rectangle spans from pixel (r1,c1) to pixel (r2,c2) inclusive:
+%% Basic Usage: 2D Matrix
+%
+% |findLargestBox2D| accepts a 2D logical or numeric matrix where
+% |TRUE|/non-zero indicates usable pixels and |FALSE|/zero indicates
+% blocked pixels. It returns the bounding box of the largest rectangle
+% consisting entirely of |TRUE|/non-zero pixels.
 mask = false(9,9);
-mask(2:3, 2:5) = true;  % 2x4 rectangle (area 8)
-mask(3:5, 3:7) = true   % 3x5 rectangle (area 15)
+mask(2:3, 2:5) = true; % 2x4 = 8
 bbox = findLargestBox2D(mask)
-%% Input Index Vector
-% Instead of providing a matrix, you can supply two vectors containing the
-% row and column indices of usable pixels. This is particularly useful when
-% working with the output of |find| or when you already have index data.
-% In general this format provides memory savings compared to a full matrix.
-[rows, cols] = find(mask);
-bbox = findLargestBox2D(rows, cols)
-%% Input Sparse Matrix
-% For large matrices this input format may provide memory savings.
-% The function processes one row at a time rather than converting the
-% entire sparse matrix to full.
-% Note that for sparse matrices any non-zero value is treated as TRUE
-% (usable), while zero values are treated as FALSE (blocked).
-mask = sparse(10000, 10000);
-mask(1000:1010, 2000:2050) = 1;  % 11x51 rectangle
+%% Output 1: |bbox| REPLACE_WITH_DASH_DASH Bounding Box Indices
+%
+% The first output |bbox| is an *Nx4* matrix with one row per rectangle
+% found. Its columns are |[r1, r2, c1, c2]|:
+%
+% * |r1|, |r2| REPLACE_WITH_DASH_DASH the first and last *row* indices of the rectangle.
+% * |c1|, |c2| REPLACE_WITH_DASH_DASH the first and last *column* indices of the rectangle.
+%
+% The rectangle spans pixels |(r1,c1)| to |(r2,c2)| inclusive.
+% When only one rectangle is found |bbox| is a 1x4 row vector.
+mask(3:5, 3:7) = true; % 3x5 = 15
 bbox = findLargestBox2D(mask)
-%% 2nd Output: Area
-% The second output returns the area of the largest rectangle in pixels:
-[~, area] = findLargestBox2D(mask)
-%% 3rd Output: Information Structure
-% The third output |info| provides data about the function execution:
-[~, ~, info] = findLargestBox2D(mask) % 11x51 = 561
-%% 3rd Output: Box Substructure
-% If a rectangle is found then the |info.box| substructure provides
-% comprehensive geometric information about the rectangle.
-% The |corners| field gives fractional coordinates (pixel centers are at
-% integer coordinates, so corners are offset by 0.5). The |center| field
-% indicates where the diagonals of the rectangle intersect.
+%% Output 2: |dims| REPLACE_WITH_DASH_DASH Rectangle Dimensions
+%
+% The second output |dims| is an *Nx2* matrix with columns |[height,width]|
+% giving the pixel dimensions of each rectangle found:
+[bbox,dims] = findLargestBox2D(mask)
+%% Output 3: |area| REPLACE_WITH_DASH_DASH Rectangle Area
+%
+% The third output |area| is a scalar equal to |height * width| of all
+% of the largest rectangle(s):
+[bbox,dims,area] = findLargestBox2D(mask)
+%% Output 4: |info| REPLACE_WITH_DASH_DASH Information Structure
+%
+% The fourth output |info| is a structure that captures geometry and
+% execution metadata. It contains the following fields:
+%
+% * |info.options|        REPLACE_WITH_DASH_DASH the resolved option values used.
+% * |info.numBoxes|       REPLACE_WITH_DASH_DASH the number of rectangles returned.
+% * |info.inputFormat|    REPLACE_WITH_DASH_DASH 'matrix', 'indices', or 'sparse'.
+% * |info.rowsProcessed|  REPLACE_WITH_DASH_DASH number of mask rows visited.
+% * |info.timeTotal|      REPLACE_WITH_DASH_DASH total execution time in seconds.
+%
+% When at least one rectangle is found, |info| contains the nested
+% structure array |.box| with size Nx1, which has the following fields:
+%
+% * |info.box.indices|   REPLACE_WITH_DASH_DASH |[r1,r2,c1,c2]| (same as one row of |bbox|).
+% * |info.box.corners|   REPLACE_WITH_DASH_DASH fractional pixel-edge coordinates |[r1-0.5,r2+0.5,c1-0.5,c2+0.5]|.
+% * |info.box.diagonal|  REPLACE_WITH_DASH_DASH the diagonal length (may be fractional).
+% * |info.box.center|    REPLACE_WITH_DASH_DASH where the diagonals meet (may be fractional).
+% * |info.box.height|    REPLACE_WITH_DASH_DASH the height in pixels.
+% * |info.box.width|     REPLACE_WITH_DASH_DASH the width in pixels.
+% * |info.box.area|      REPLACE_WITH_DASH_DASH the area in pixels.
+% * |info.box.perimeter| REPLACE_WITH_DASH_DASH the perimeter length in pixels.
+%
+[~,~,~,info] = findLargestBox2D(mask)
 info.box
-%% Empty or No Valid Rectangle
-% If the input contains no usable pixels (e.g. all FALSE), the function
-% returns an empty |bbox| and zero area:
-mask = false(5,5);  % all blocked pixels
-[bbox, area] = findLargestBox2D(mask)
-%% Complex Pattern Example
-% A more complex mask demonstrating the algorithm finding the optimal
-% rectangle among multiple irregular regions:
+%% Input 1: Sparse Matrix
+%
+% For very large but sparsely populated grids, pass a sparse matrix.
+% Any non-zero element is treated as |TRUE| (usable); zeros are |FALSE|.
+% The function processes one row at a time, so it never materialises the
+% full dense matrix REPLACE_WITH_DASH_DASH this can give significant memory savings:
+mask = sparse(10000, 10000);
+mask(1000:1010, 2000:2050) = 1; % 11x51 = 561
+[bbox,dims,area] = findLargestBox2D(mask)
+%% Inputs 1 & 2: Index Vectors
+%
+% Instead of a full matrix, you can supply two vectors of row and column
+% indices of the usable pixels. This is convenient when working with the
+% output of |find| and avoids constructing a large dense matrix.
+% All four output arguments are identical to the matrix-input form:
+[pixR, pixC] = find(mask);
+[bbox,dims,area] = findLargestBox2D(pixR, pixC)
+%% Multiple Rectangles of Equal Largest Area
+%
+% When multiple rectangles have the same largest area then by default 
+% all *N* of them are returned. These rectangles may *overlap*!
+% Output |bbox| will then have size *Nx4* (one row per rectangle), and
+% |info.box| will be an *Nx1* struct array (one element per rectangle).
+%
+% Here the mask contains two rectangles both with area=20:
+mask = false(10, 20);
+mask(2:5, 2:6) = true; % 4x5 = 20
+mask(3:7, 15:18) = true; % 5x4 = 20
+[bbox,dims,area,info] = findLargestBox2D(mask)
+%% Option |maxN| REPLACE_WITH_DASH_DASH Limit Number of Results
+%
+% Use the |'maxN'| option to limit the number of rectangles returned.
+% This is useful when you only need the first occurrence, or when memory
+% usage from many duplicates is a concern.
+%
+% For example, setting |maxN=1| returns a maximum of one rectangle:
+findLargestBox2D(mask, 'maxN',Inf) % default all
+findLargestBox2D(mask, 'maxN',1) % 1st rectangle only
+%% Options |minArea| and |maxArea| REPLACE_WITH_DASH_DASH Area Constraints
+%
+% |'minArea'| and |'maxArea'| set inclusive bounds on the area (in pixels)
+% of returned rectangles. Note that rectangles may *overlap*!
 mask = false(15,15);
-mask(2:4, 2:6) = true;    % 3x5 rectangle
-mask(6:9, 8:14) = true;   % 4x7 rectangle (largest: area 28)
-mask(11:13, 2:4) = true;  % 3x3 rectangle
-[bbox, area] = findLargestBox2D(mask)
-%% Efficiency of Indices and Sparse Data
-% The function is particularly efficient for index data. Using the
-% index vector input or sparse matrix input avoids creating full matrices.
+mask(2:4, 2:6) = true; % 3x5 = 15
+mask(6:9, 8:14) = true; % 4x7 = 28
+mask(11:13,2:4) = true; % 3x3 = 9
+findLargestBox2D(mask, 'maxArea',10)
+findLargestBox2D(mask, 'maxArea',20, 'minArea',10)
+%% Options |minHeight| and |maxHeight| REPLACE_WITH_DASH_DASH Height Constraints
 %
-% Note that runtime is heavily dependent on the data density, the number
-% of rectangles, the provided data type, etc. There is no simple way to
-% predict which format will require the least memory or runtime.
+% |'minHeight'| and |'maxHeight'| restrict the number of rows the returned
+% rectangle may span. This is useful when the result must fit a specific
+% aspect ratio or when tall, thin rectangles are undesirable:
+findLargestBox2D(mask, 'maxHeight',3)
+findLargestBox2D(mask, 'minHeight',4)
+%% Options |minWidth| and |maxWidth| REPLACE_WITH_DASH_DASH Width Constraints
 %
-% For example, a 9999x9999 mask with a small usable region:
-mask = false(9999,9999);
-mask(8888,8888) = true;
-mask(432:456,543:567) = true;
-[bboxL, areaL, infoL] = findLargestBox2D(mask);
+% |'minWidth'| and |'maxWidth'| restrict the number of columns the returned
+% rectangle may span. These work symmetrically with the height constraints:
+findLargestBox2D(mask, 'maxWidth',3)
+findLargestBox2D(mask, 'minWidth',6)
+%% Option |display| REPLACE_WITH_DASH_DASH Show Function Progress
+%
+% The |'display'| option accepts one of the following three values:
+%
+% * |'silent'| : no progress display.
+% * |'waitbar'|: MATLAB progress bar, with estimated time remaining (ETR).
+% * |'verbose'|: prints progress in the command window, with ETR.
+%
+%% Options as a Struct
+%
+% All options can equivalently be passed as a scalar struct whose field
+% names match the option names (case-insensitive). This is convenient
+% when you want to build options programmatically or share them across
+% multiple calls:
+opts = struct('maxN',3, 'maxWidth',3);
+findLargestBox2D(mask, opts)
+%% Empty or No Valid Rectangle
+%
+% If the mask contains no usable pixels, or if no rectangle satisfies the
+% active constraints, the function returns empty arrays for |bbox| and
+% |dims|, zero for |area|, and an |info| struct without |info.box| field:
+[bbox,dims,area] = findLargestBox2D(mask, 'minArea',99)
+%% Performance Comparison Across Input Formats
+%
+% The three input formats (logical/numeric matrix, index vectors, sparse
+% matrix) can differ substantially in memory use and runtime depending on
+% mask size and density. There is no universally fastest format; the
+% examples below time all three on a 9999x9999 grid with a small usable
+% region so that you can observe the tradeoffs on your own hardware.
+%
+% All formats must produce identical results REPLACE_WITH_DASH_DASH verified with |isequal|:
+N = 9999;
+% Logical matrix:
+maskL = false(N, N);
+maskL(432:456, 543:567) = true;
+maskL(8888, 8888)       = true;
+% Index vectors (from meshgrid, to avoid dependence on maskL):
+[cg, rg] = meshgrid(543:567, 432:456);
+pixR = [rg(:); 8888];
+pixC = [cg(:); 8888];
+% Sparse matrix
+maskS = sparse(pixR, pixC, 1, N, N);
+% Find rectangles:
+[bboxL, dimsL, areaL, infoL] = findLargestBox2D(maskL);
+[bboxI, dimsI, areaI, infoI] = findLargestBox2D(pixR, pixC);
+[bboxS, dimsS, areaS, infoS] = findLargestBox2D(maskS);
 
-[rows,cols] = find(mask);
-[bboxI, areaI, infoI] = findLargestBox2D(rows, cols);
+isequal(bboxL,bboxI,bboxS)
+isequal(dimsL,dimsI,dimsS)
+isequal(areaL,areaI,areaS)
 
-[rows, cols] = meshgrid(432:456, 543:567);
-rows = [rows(:);8888];
-cols = [cols(:);8888];
-[bboxJ, areaJ, infoJ] = findLargestBox2D(rows, cols);
-
-mask = sparse(rows,cols,1);
-[bboxS, areaS, infoS] = findLargestBox2D(mask);
-
-isequal(bboxL,bboxI,bboxJ,bboxS)
-isequal(areaL,areaI,areaJ,areaS)
-
-fprintf('%9.6f seconds for %s\n',...
-	infoL.timeTotal, 'logical matrix',...
-	infoI.timeTotal, 'indices (from logical matrix)',...
-	infoJ.timeTotal, 'indices (from meshgrid)',...
-	infoS.timeTotal, 'sparse matrix')
-
+fprintf('%8.4f s  logical matrix\n',  infoL.timeTotal)
+fprintf('%8.4f s  index vectors\n',   infoI.timeTotal)
+fprintf('%8.4f s  sparse matrix\n',   infoS.timeTotal)
+%
+%% Interactive GUI (R2020b or later)
+%
+% Try the interactive GUI: select from some interesting example matrices,
+% toggle values by clicking on the image, and see the rectangles!
+findLargestBox2D_GUI(mask)
 ##### SOURCE END #####
 -->
 </body>

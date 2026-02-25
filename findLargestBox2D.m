@@ -71,7 +71,7 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 % ----------|----------------|---------------------------------------------
 % maxN      | 1<=maxN<=Inf** | The maximum number of rectangles to return.
 % ----------|----------------|---------------------------------------------
-% minArea   | **1<=minA<=Inf | The minimum rectangle area (# of pixels).
+% minArea   | **1<=minA<Inf  | The minimum rectangle area (# of pixels).
 % ----------|----------------|---------------------------------------------
 % maxArea   | 1<=maxA<=Inf** | The maximum rectangle area (# of pixels).
 % ----------|----------------|---------------------------------------------
@@ -131,9 +131,9 @@ bbox = [];
 dims = [];
 area = 0;
 %
-%% Default Options %%
+%% Default Option Values %%
 %
-stpo = struct(... Default option values
+stpo = struct(...
 	'display','silent', 'maxN',Inf, 'minArea',1, 'maxArea',Inf,...
 	'minHeight',1, 'maxHeight',Inf, 'minWidth',1, 'maxWidth',Inf);
 %
@@ -141,6 +141,7 @@ stpo = struct(... Default option values
 %
 arg = cellfun(@flb2ss2c,varargin,'UniformOutput',false);
 ixc = cellfun('isclass',arg,'char') & cellfun('ndims',arg)<3 & cellfun('size',arg,1)==1;
+%
 if any(ixc) % options as <name-value> pairs
 	ix1 = find(ixc,1,'first');
 	opts = cell2struct(arg(ix1+1:2:end),arg(ix1:2:end),2);

@@ -15,28 +15,35 @@ function [bbox,dims,area,info] = findLargestBox2D_GUI(varargin)
 %
 %% Input Arguments %%
 %
-% As per findLargestBox2D.
-%
-% If no input/s are provided then a demo matrix is used.
+% As per findLargestBox2D. If no inputs are provided a demo mask is used.
 %
 %% Output Arguments %%
 %
-% As per findLargestBox2D.
+% As per findLargestBox2D. Outputs are captured when the GUI window closes.
 %
 %% Dependencies %%
 %
 % * MATLAB R2020b or later.
 % * findLargestBox2D.m function
 %
-% See also FINDLARGESTBOX2D
-persistent fgh fgc actIdx memFun drpCase spinX spinY txtBbox txtDims txtArea txtInfo clr0 clr1 clrR
+% See also FINDLARGESTBOX2D FINDLARGESTBOX3D FINDLARGESTBOX3D_GUI
+persistent fgh fgc axh imh txPool actIdx memFun drpCase ...
+	spinX spinY spinN txtBbox txtDims txtArea txtInfo clr0 clr1 clrF ...
+	clrIn clrOut stpo cstrSpn cstrFlds
 % R2020b: uigridlayout
 % R2017a: memoize
 % R2016a: uifigure
 %
+%% Default Option Values %%
+%
+stpo = struct('maxN',Inf,...
+	'minArea'  ,1, 'maxArea'  ,Inf,...
+	'minHeight',1, 'maxHeight',Inf,...
+	'minWidth' ,1, 'maxWidth' ,Inf);
+%
 %% Input Wrangling %%
 %
-egMat = flb2DemoMatrices();
+egMat = flb2DemoMasks(); % renew all masks on each function call.
 %
 ido = cellfun(@(a)isnumeric(a)||islogical(a),varargin);
 id1 = find([~ido,true],1,'first');
@@ -51,16 +58,49 @@ switch id1
 		egMat(end).default = flb2Idx2Mask(varargin{1:2});
 	otherwise
 		error('SC:findLargestBox2D_GUI:unsupportedInputs',...
-			'Either one matrix (mask) or two index vectors are supported')
+			'Either one matrix (mask) or two index vectors (pxR,pxC) are supported')
 end
 %
 egMat = egMat(end:-1:1);
 [egMat.current] = deal(egMat.default);
 %
+%% Options %%
+%
+varg = varargin(id1:end);
+dfns = fieldnames(stpo);
+%
+if isscalar(varg) && isstruct(varg{1})
+	opts = varg{1};
+	fnms = fieldnames(opts);
+	for kk = 1:numel(fnms)
+		ix = strcmpi(fnms{kk},dfns);
+		if any(ix)
+			stpo.(dfns{ix}) = opts.(fnms{kk});
+		end
+	end
+else
+	for kk = 1:2:numel(varg)
+		if ischar(varg{kk}) || isstring(varg{kk})
+			ix = strcmpi(varg{kk},dfns);
+			if any(ix)
+				stpo.(dfns{ix}) = varg{kk+1};
+			end
+		else
+			error('SC:findLargestBox2D_GUI:notNameValuePairs',...
+				'Optional inputs must be in one scalar structure or name-value pairs.')
+		end
+	end
+end
+%
 if isempty(fgh) || ~ishghandle(fgh)
 	actIdx = 1;
 	flb2NewFigure()
 else
+	actIdx = drpCase.ValueIndex;
+	spinN.Value = stpo.maxN;
+	for kk = 1:numel(cstrFlds)
+		cstrSpn(kk).Value = stpo.(cstrFlds{kk});
+	end
 	figure(fgh)
 end
 %
@@ -72,17 +112,18 @@ flb2DropClBk()
 %
 if nargout
 	waitfor(fgh)
-	% Return results from active case when GUI closes
-	[bbox,dims,area,info] = memFun(egMat(actIdx).current,varargin{id1:end});
+	% Return results from active mask when GUI closes
+	[bbox,dims,area,info] = memFun(egMat(actIdx).current,stpo);
 else
 	clear bbox
 end
 %
 %% Callback Functions %%
 %
-	function flb2ClickClBk(~,~) % Click on axes or image to toggle element
+	function flb2ClickClBk(~,~)
+		% Click on axes or image to toggle element value.
 		%
-		mcp = egMat(actIdx).axes.CurrentPoint;
+		mcp = axh.CurrentPoint;
 		xcp = round(mcp(1,1));
 		ycp = round(mcp(1,2));
 		%
@@ -92,13 +133,14 @@ end
 		%
 		val = ~egMat(actIdx).current(ycp,xcp);
 		egMat(actIdx).current(ycp,xcp) = val;
-		egMat(actIdx).image.CData(ycp,xcp) = val;
-		egMat(actIdx).text(ycp,xcp).String = char('0'+val);
+		imh.CData(ycp,xcp) = val;
+		txPool(ycp,xcp).String = char('0'+val);
 		%
 		flb2ComputeAndDisplay()
 	end
 %
-	function flb2SpinClBk(src,~,flag) % Spinner change callback
+	function flb2SpinClBk(src,~,flag)
+		% Spinner change callback
 		%
 		mask = egMat(actIdx).current;
 		[newY,newX] = size(mask);
@@ -118,102 +160,102 @@ end
 		mask(:,newX+1:end) = [];
 		%
 		egMat(actIdx).current = mask;
-		egMat(actIdx).image.CData = mask;
 		%
 		flb2UpdateDimensions()
 		flb2ComputeAndDisplay()
 	end
 %
-	function flb2DropClBk(~,~) % Handle case selection from dropdown
+	function flb2DropClBk(~,~)
+		% Handle mask selection from dropdown menu.
 		%
-		try
-			tmpI = [egMat.image];
-		catch
+		if isempty(axh) || ~ishghandle(axh)
 			return
 		end
-		set(tmpI,'Visible','off');
-		arrayfun(@(s)set(s.text,'Visible','off'),egMat);
+		%
+		% Hide rectangles of the current example.
+		set(egMat(actIdx).rectangles,'Visible','off');
 		%
 		actIdx = drpCase.ValueIndex;
-		%
-		delete([egMat.rectangles]);
-		egMat(actIdx).rectangles = gobjects(0);
 		%
 		[nowY,nowX] = size(egMat(actIdx).current);
 		spinY.Value = nowY;
 		spinX.Value = nowX;
 		%
+		flb2UpdateDimensions()
 		flb2ComputeAndDisplay()
 	end
 %
-	function flb2ResetClBk(~,~) % Reset current case to default
+	function flb2ResetClBk(~,~)
+		% Reset the current mask to its default size and values.
 		%
-		mask = egMat(actIdx).default;
-		[oldY,oldX] = size(egMat(actIdx).current);
-		egMat(actIdx).current = mask;
+		egMat(actIdx).current = egMat(actIdx).default;
 		[newY,newX] = size(egMat(actIdx).current);
-		egMat(actIdx).image.CData = mask;
+		spinY.Value = newY;
+		spinX.Value = newX;
 		%
-		if oldY~=newY || oldX~=newX
-			% Dimensions changed - update spinners and graphics
-			%
-			spinY.Value = newY;
-			spinX.Value = newX;
-			%
-			flb2UpdateDimensions()
-			%
-		else % all
-			%
-			set(egMat(actIdx).text,{'String'},num2cell(char('0'+mask(:))));
-			%
+		flb2UpdateDimensions()
+		flb2ComputeAndDisplay()
+	end
+%
+	function flb2OptionsClBk(src,~,field,pSpn,pFld,bFcn)
+		% Constraint/maxN spinner callback.
+		stpo.(field) = src.Value;
+		if nargin>3
+			pSpn.Value = bFcn(pSpn.Value, src.Value);
+			stpo.(pFld) = pSpn.Value;
 		end
-		%
 		flb2ComputeAndDisplay()
 	end
 %
 %% Helper Functions %%
 %
 	function flb2UpdateDimensions()
-		% Update dimensions by managing text handles efficiently
+		% Update the shared axes, image, and text pool for the active example.
+		% The pool grows as needed but never shrinks; surplus texts are hidden.
 		%
-		% Strategy: minimize object creation/deletion
-		% - Delete only superfluous objects
-		% - Create only necessary new objects
-		% - Reuse existing objects where possible
-		%
-		txh = egMat(actIdx).text;
-		axh = egMat(actIdx).axes;
 		mask = egMat(actIdx).current;
-		%
-		[oldY,oldX] = size(txh);
 		[newY,newX] = size(mask);
+		[poolY,poolX] = size(txPool);
 		%
-		% shrink
-		delete(txh(:,newX+1:end));
-		txh(:,newX+1:end) = [];
-		delete(txh(newY+1:end,:));
-		txh(newY+1:end,:) = [];
-		%
+		% Update axes limits
 		if isempty(mask)
 			axh.XLim = [0.5,1.5];
 			axh.YLim = [0.5,1.5];
 		else
 			axh.XLim = [0.5,0.5+newX];
 			axh.YLim = [0.5,0.5+newY];
-			%
-			if newY>oldY || newX>oldX % expand
-				[matX,matY] = meshgrid(1:newX,1:newY);
-				idxM = matY(:)>oldY | matX(:)>oldX;
-				txh(newY,newX) = gobjects(1);
-				txh(idxM) = text(axh, matX(idxM), matY(idxM), 'X',...
-					'HorizontalAlignment','center', 'Color',clrR,...
-					'VerticalAlignment','middle', 'FontSize',10,...
-					'ButtonDownFcn',@flb2ClickClBk);
-			end
 		end
 		%
-		set(txh,{'String'},num2cell(char('0'+mask(:)))); % all
-		egMat(actIdx).text = txh;
+		% Update shared image
+		imh.CData = mask;
+		%
+		% Expand pool if the new mask is larger in either dimension
+		if newY > poolY || newX > poolX
+			bigY = max(newY,poolY);
+			bigX = max(newX,poolX);
+			[matX,matY] = meshgrid(1:bigX,1:bigY);
+			idxM = matY(:)>poolY | matX(:)>poolX;
+			txPool(bigY,bigX) = gobjects(1);
+			txPool(idxM) = text(axh, matX(idxM), matY(idxM), '0',...
+				'HorizontalAlignment','center', 'Color',clrF,...
+				'VerticalAlignment','middle', 'FontSize',10,...
+				'ButtonDownFcn',@flb2ClickClBk, 'Visible','off');
+			[poolY,poolX] = size(txPool);
+		end
+		%
+		% Update the active region: strings and visibility
+		if ~isempty(mask)
+			set(txPool(1:newY,1:newX),{'String'},num2cell(char('0'+mask(:))));
+			set(txPool(1:newY,1:newX),'Visible','on');
+		end
+		% Hide surplus rows
+		if poolY > newY
+			set(txPool(newY+1:end,:),'Visible','off');
+		end
+		% Hide surplus columns within active rows
+		if poolX > newX && newY > 0
+			set(txPool(1:newY,newX+1:end),'Visible','off');
+		end
 	end
 %
 	function flb2ComputeAndDisplay() % Compute rectangle and update displays
@@ -228,15 +270,15 @@ end
 		egMat(actIdx).rectangles = gobjects(0);
 		%
 		try
-			[bboxOut,dimsOut,areaOut,infoOut] = memFun(mask,varargin{id1:end});
+			[bboxOut,dimsOut,areaOut,infoOut] = memFun(mask,stpo);
 		catch ME
 			fgh.Pointer = fgp;
 			if startsWith(ME.identifier,'SC:findLargestBox2D:')
 				txtInfo.FontColor = [1,0,0];
-				txtInfo.Value = ME.message;
+				txtInfo.Value = sprintf('Error: %s',ME.message);
 				txtBbox.Value = '';
 				txtDims.Value = '';
-				txtArea.Value = NaN;
+				txtArea.Value = 0;
 				return
 			else
 				rethrow(ME)
@@ -248,9 +290,7 @@ end
 			txtBbox.Value = '[]';
 			txtDims.Value = '[]';
 			txtArea.Value = 0;
-		else
-			% bbox is Nx4: [r1,r2,c1,c2] per row
-			axh = egMat(actIdx).axes;
+		else % bbox is Nx4: [r1,r2,c1,c2] per row
 			nmR = size(bboxOut,1);
 			reH = gobjects(1,nmR);
 			colors = flb2RectColors(nmR);
@@ -275,17 +315,16 @@ end
 		% Update info display
 		fnm = fieldnames(infoOut);
 		iss = structfun(@isstruct,infoOut);
-		infoOut = rmfield(infoOut,fnm(iss));
+		dispInfo = rmfield(infoOut,fnm(iss));
 		try
-			txt = formattedDisplayText(infoOut);
+			txt = formattedDisplayText(dispInfo);
 		catch
-			txt = evalc('disp(infoOut)'); % ugh!
+			txt = evalc('disp(dispInfo)'); % ugh!
 		end
 		txtInfo.FontColor = fgc;
 		txtInfo.Value = txt;
 		%
-		egMat(actIdx).image.Visible = 'on';
-		set(egMat(actIdx).text,'Visible','on');
+		imh.Visible = 'on';
 		%
 		fgh.Pointer = fgp;
 		%
@@ -300,33 +339,140 @@ end
 		fgh.HandleVisibility = 'off';
 		fgh.IntegerHandle = 'off';
 		%
-		% Create grid layout
-		uig = uigridlayout(fgh,[4,8]);
-		uig.RowHeight = {'1x','fit','fit','fit'};
-		uig.ColumnWidth = {'fit','1x','fit','1x','fit','2x','1x','1x'};
-		%
 		% Create a temporary label to get foreground color for light/dark detection
-		tmpLbl = uilabel(uig);
+		tmpLbl = uilabel(fgh);
 		fgc = tmpLbl.FontColor;
 		delete(tmpLbl);
 		%
-		fgg = fgc*[0.298936;0.587043;0.114021];
+		fgg = fgc*[0.298936;0.587043;0.114021]; % perceived luminance
 		if fgg<0.54 % lightmode
-			clr0 = [0.95,0.85,0.85]; % light red
-			clr1 = [0.85,0.95,0.85]; % light green
-			clrR = [0,0,0]; % black rectangle/text
+			clr0 = [0.95,0.85,0.85]; % FALSE
+			clr1 = [0.85,0.95,0.85]; % TRUE
+			clrF = [0,0,0]; % foreground
+			clrIn  = [0.75, 0.80, 1.00]; % inputs
+			clrOut = [0.92, 0.92, 1.00]; % outputs
 		else % darkmode
-			clr0 = [0.25,0.15,0.15]; % dark red
-			clr1 = [0.15,0.25,0.15]; % dark green
-			clrR = [1,1,1]; % white rectangle/text
+			clr0 = [0.25,0.15,0.15]; % FALSE
+			clr1 = [0.15,0.25,0.15]; % TRUE
+			clrF = [1,1,1]; % foreground
+			clrIn  = [0.25, 0.20, 0.00]; % inputs
+			clrOut = [0.13, 0.13, 0.25]; % outputs
 		end
 		%
-		axp = uipanel(uig);
-		axp.BorderWidth = 0;
-		axp.Layout.Row = 1;
-		axp.Layout.Column = [1,8];
+		% Main grid layout
+		glMG = uigridlayout(fgh,[2,2]);
+		glMG.RowHeight = {'1x','fit'};
+		glMG.ColumnWidth = {'1x','fit'};
 		%
-		ax0 = axes(axp);
+		% Bottom row layout
+		glBR = uigridlayout(glMG,[3,8]);
+		glBR.Padding = [0,0,0,0];
+		glBR.RowHeight = {'fit','fit','fit'};
+		glBR.ColumnWidth = {'fit','1x','fit','1x','fit','2x','1x','1x'};
+		glBR.Layout.Row = 2;
+		glBR.Layout.Column = [1,2];
+		%
+		% Right column layout
+		glRC = uigridlayout(glMG,[4,1]);
+		glRC.Padding = [0,0,0,0];
+		glRC.RowHeight = {'fit','fit','fit','1x'};
+		glRC.ColumnWidth = {123};
+		glRC.Layout.Row = 1;
+		glRC.Layout.Column = 2;
+		%
+		gl2C = uigridlayout(glRC,[6,2]);
+		gl2C.Padding = [0,0,0,0];
+		gl2C.RowHeight = {'fit','fit','fit','fit','fit','fit'};
+		gl2C.ColumnWidth = {'1x','1x'};
+		gl2C.RowSpacing = 5;
+		gl2C.Layout.Row = 3;
+		gl2C.Layout.Column = 1;
+		%
+		%% Area/Height/Width Limits
+		%
+		lblN = uilabel(glRC);
+		lblN.Visible = 'on';
+		lblN.Text = '↓ Max. # Rectangles';
+		lblN.HorizontalAlignment = 'center';
+		%lblN.VerticalAlignment = 'bottom';
+		lblN.Layout.Row = 1;
+		lblN.Layout.Column = 1;
+		%
+		spinN = uispinner(glRC);
+		spinN.BackgroundColor = clrIn;
+		spinN.Visible = 'on';
+		spinN.Limits = [1,Inf];
+		spinN.Step = 1;
+		spinN.Value = stpo.maxN;
+		spinN.RoundFractionalValues = 'on';
+		spinN.ValueChangedFcn = {@flb2OptionsClBk,'maxN'};
+		spinN.Layout.Row = 2;
+		spinN.Layout.Column = 1;
+		spinN.Tooltip = 'Option <maxN>: the maximum number of rectangles';
+		%
+		CName = {'Area';   'Height';  'Width'};
+		CUnit = {'pixels'; 'rows';    'columns'};
+		CWord = {'Minimum', 'Maximum'};
+		numNm = numel(CName);
+		numWd = numel(CWord);
+		cstrDef(numNm,numWd) = struct('label','','field','','tooltip','');
+		%
+		% Couple min/max values
+		for ii = 1:numNm
+			for jj = 1:numWd
+				fld = [lower(CWord{jj}(1:3)),CName{ii}];
+				cstrDef(ii,jj).label = sprintf('↓ %s%s',CWord{jj}(1:3),CName{ii}(1));
+				cstrDef(ii,jj).field = fld;
+				cstrDef(ii,jj).tooltip = sprintf('Option <%s>: %s rectangle %s (%s)',...
+					fld, lower(CWord{jj}), lower(CName{ii}), CUnit{ii});
+			end
+		end
+		%
+		cstrSpn = gobjects(numNm,numWd);
+		%
+		for ii = 1:numNm
+			for jj = 1:numWd
+				lbl = uilabel(gl2C);
+				lbl.Visible = 'on';
+				lbl.Text = cstrDef(ii,jj).label;
+				lbl.HorizontalAlignment = 'center';
+				lbl.Layout.Row = 2*ii-1;
+				lbl.Layout.Column = jj;
+				%
+				spn = uispinner(gl2C);
+				spn.BackgroundColor = clrIn;
+				spn.Visible = 'on';
+				spn.Limits = [1,Inf];
+				spn.Step = 1;
+				spn.Value = stpo.(cstrDef(ii,jj).field);
+				spn.RoundFractionalValues = 'on';
+				%spn.ValueChangedFcn = {@flb2OptionsClBk, cstrDef(ii,jj).field};
+				spn.Layout.Row = 2*ii;
+				spn.Layout.Column = jj;
+				spn.Tooltip = cstrDef(ii,jj).tooltip;
+				cstrSpn(ii,jj) = spn;
+			end
+		end
+		bFcns = {@max, @min};
+		for ii = 1:numNm
+			for jj = 1:numWd
+				pSpn = cstrSpn(ii,3-jj);
+				pFld = cstrDef(ii,3-jj).field;
+				cstrSpn(ii,jj).ValueChangedFcn = {@flb2OptionsClBk, cstrDef(ii,jj).field, pSpn, pFld, bFcns{jj}};
+			end
+		end
+		cstrFlds = {cstrDef.field};
+		%
+		%% Main Axes
+		%
+		uip1 = uipanel(glMG);
+		uip1.BorderType = 'none';
+		uip1.BorderWidth = 0;
+		uip1.Title = '';
+		uip1.Layout.Row = 1;
+		uip1.Layout.Column = 1;
+		%
+		ax0 = uiaxes(uip1);
 		ax0.XLim = 0:1;
 		ax0.YLim = 0:1;
 		ax0.XTick = [];
@@ -336,180 +482,191 @@ end
 		ax0.Toolbar.Visible = 'off';
 		ax0.Units = 'normalized';
 		ax0.Position = [0,0,1,1];
-		ax0.PositionConstraint = 'innerposition';
+		ax0.PositionConstraint = 'outerposition';
 		ax0.NextPlot = 'add';
 		text(ax0, 0.5, 0.5, 'Empty Mask!', 'Visible','on',...
 			'HorizontalAlignment','center','Color',[1,0,0],...
 			'VerticalAlignment','middle', 'FontSize',14)
 		%
-		for k = 1:numel(egMat)
-			%
-			mask = egMat(k).current;
-			[szY,szX] = size(mask);
-			%
-			axh = axes(axp); %#ok<LAXES>
-			axh.XLim = [0.5,max(1,szX)+0.5];
-			axh.YLim = [0.5,max(1,szY)+0.5];
-			axh.XTick = [];
-			axh.YTick = [];
-			axh.Box = 'on';
-			axh.YDir = 'reverse';
-			axh.ButtonDownFcn = @flb2ClickClBk;
-			axh.Visible = 'off';
-			axh.Toolbar.Visible = 'off';
-			axh.Colormap = [clr0;clr1];
-			axh.CLim = [0,1];
-			axh.Units = 'normalized';
-			axh.Position = [0,0,1,1];
-			axh.PositionConstraint = 'innerposition';
-			axh.NextPlot = 'add';
-			try %#ok<TRYNC>
-				axh.Tooltip = 'Click on the cells to toggle the values!';
-			end
-			%
-			% Create image
-			imh = imagesc(axh, mask, 'ButtonDownFcn',@flb2ClickClBk);
-			uistack(imh,'bottom')
-			%
-			% Create text
-			if numel(mask)
-				matC = char('0'+mask);
-				[matX,matY] = meshgrid(1:szX,1:szY);
-				txh = text(axh, matX(:), matY(:), matC(:),...
-					'HorizontalAlignment','center', 'Color',clrR,...
-					'VerticalAlignment','middle', 'FontSize',10,...
-					'ButtonDownFcn',@flb2ClickClBk);
-			else
-				txh = gobjects(szY,szX);
-			end
-			%
-			egMat(k).axes = axh;
-			egMat(k).image = imh;
-			egMat(k).text = reshape(txh,szY,szX);
-			egMat(k).rectangles = gobjects(0);
+		% Single shared axes for all examples
+		mask = egMat(actIdx).current;
+		[szY,szX] = size(mask);
+		%
+		axh = axes(uip1); % AXES are the only reliable way to get precise position control.
+		axh.XLim = [0.5,max(1,szX)+0.5];
+		axh.YLim = [0.5,max(1,szY)+0.5];
+		axh.XTick = [];
+		axh.YTick = [];
+		axh.XLabel.String = '';
+		axh.YLabel.String = '';
+		axh.Box = 'on';
+		axh.YDir = 'reverse';
+		axh.ButtonDownFcn = @flb2ClickClBk;
+		axh.Visible = 'off';
+		axh.Toolbar.Visible = 'off';
+		axh.Colormap = [clr0;clr1];
+		axh.CLim = [0,1];
+		axh.Units = 'normalized';
+		axh.Position = [0,0,1,1];
+		axh.PositionConstraint = 'innerposition';
+		axh.NextPlot = 'add';
+		try %#ok<TRYNC>
+			axh.Tooltip = 'Click on the cells to toggle the values!';
 		end
 		%
-		% Row spinner
-		lblY = uilabel(uig);
+		uip1.AutoResizeChildren = 'off';
+		uip1.SizeChangedFcn = @(~,~)set([ax0,axh],'Position',[0,0,1,1], 'Units','normalized');
+		%
+		% Shared image
+		imh = imagesc(axh, mask, 'ButtonDownFcn',@flb2ClickClBk);
+		uistack(imh,'bottom')
+		%
+		% Initial text pool for the active example
+		if numel(mask)
+			matC = char('0'+mask);
+			[matX,matY] = meshgrid(1:szX,1:szY);
+			txPool = text(axh, matX(:), matY(:), matC(:),...
+				'HorizontalAlignment','center', 'Color',clrF,...
+				'VerticalAlignment','middle', 'FontSize',10,...
+				'ButtonDownFcn',@flb2ClickClBk);
+			txPool = reshape(txPool,szY,szX);
+		else
+			txPool = gobjects(0,0);
+		end
+		%
+		% Initialise rectangle store for all examples
+		for jjj = 1:numel(egMat)
+			egMat(jjj).rectangles = gobjects(0);
+		end
+		%
+		%% Mask Size
+		%
+		lblY = uilabel(glBR);
 		lblY.Visible = 'on';
-		lblY.Text = 'Rows';
-		lblY.HorizontalAlignment = 'center';
-		lblY.Layout.Row = 2;
+		lblY.Text = 'Rows:';
+		lblY.HorizontalAlignment = 'right';
+		lblY.Layout.Row = 1;
 		lblY.Layout.Column = 1;
 		%
-		spinY = uispinner(uig);
+		spinY = uispinner(glBR);
 		spinY.Visible = 'on';
 		spinY.Limits = [0,Inf];
 		spinY.Step = 1;
 		spinY.Value = szY;
+		spinY.RoundFractionalValues = 'on';
 		spinY.ValueChangedFcn = {@flb2SpinClBk,'rows'};
-		spinY.Layout.Row = 2;
+		spinY.Layout.Row = 1;
 		spinY.Layout.Column = 2;
-		spinY.Tooltip = 'Number of rows in the current case';
+		spinY.Tooltip = 'Number of rows in the current example';
 		%
-		% Column spinner
-		lblX = uilabel(uig);
+		lblX = uilabel(glBR);
 		lblX.Visible = 'on';
-		lblX.Text = 'Columns';
-		lblX.HorizontalAlignment = 'center';
-		lblX.Layout.Row = 2;
+		lblX.Text = 'Columns:';
+		lblX.HorizontalAlignment = 'right';
+		lblX.Layout.Row = 1;
 		lblX.Layout.Column = 3;
 		%
-		spinX = uispinner(uig);
+		spinX = uispinner(glBR);
 		spinX.Visible = 'on';
 		spinX.Limits = [0,Inf];
 		spinX.Step = 1;
 		spinX.Value = szX;
+		spinX.RoundFractionalValues = 'on';
 		spinX.ValueChangedFcn = {@flb2SpinClBk,'cols'};
-		spinX.Layout.Row = 2;
+		spinX.Layout.Row = 1;
 		spinX.Layout.Column = 4;
-		spinX.Tooltip = 'Number of columns in the current case';
+		spinX.Tooltip = 'Number of columns in the current mask';
 		%
-		% Case dropdown
-		txtCase = uilabel(uig);
+		%% Examples Menu
+		%
+		txtCase = uilabel(glBR);
 		txtCase.Visible = 'on';
-		txtCase.Text = 'Example';
-		txtCase.HorizontalAlignment = 'center';
-		txtCase.Layout.Row = 2;
+		txtCase.Text = 'Example:';
+		txtCase.HorizontalAlignment = 'right';
+		txtCase.Layout.Row = 1;
 		txtCase.Layout.Column = 5;
 		%
-		drpCase = uidropdown(uig);
+		drpCase = uidropdown(glBR);
 		drpCase.Visible = 'on';
 		drpCase.Items = {egMat.name};
-		drpCase.Layout.Row = 2;
+		drpCase.Layout.Row = 1;
 		drpCase.Layout.Column = [6,7];
-		drpCase.Tooltip = 'Select preset example or user case';
+		drpCase.Tooltip = 'Select preset example or user mask';
 		drpCase.ValueChangedFcn = @flb2DropClBk;
 		%
-		% Reset button
-		btnReset = uibutton(uig);
+		btnReset = uibutton(glBR);
 		btnReset.Visible = 'on';
 		btnReset.Text = 'Reset';
-		btnReset.Layout.Row = 2;
+		btnReset.Layout.Row = 1;
 		btnReset.Layout.Column = 8;
-		btnReset.Tooltip = 'Reset current case to original values and dimensions';
+		btnReset.Tooltip = 'Reset the current mask to original values and dimensions';
 		btnReset.ButtonPushedFcn = @flb2ResetClBk;
 		%
-		% Output display
-		lblBbox = uilabel(uig);
+		%% Output Display
+		%
+		lblBbox = uilabel(glBR);
 		lblBbox.Visible = 'on';
-		lblBbox.Text = '↓ BBox [r1,r2,c1,c2]';
+		lblBbox.Text = '↓ [r1,r2,c1,c2]';
 		lblBbox.HorizontalAlignment = 'left';
-		lblBbox.Layout.Row = 3;
+		lblBbox.Layout.Row = 2;
 		lblBbox.Layout.Column = [3,4];
 		%
-		txtBbox = uitextarea(uig);
+		txtBbox = uitextarea(glBR);
+		txtBbox.BackgroundColor = clrOut;
 		txtBbox.Visible = 'on';
 		txtBbox.Value = 'X';
 		txtBbox.Editable = false;
-		txtBbox.Layout.Row = 4;
+		txtBbox.Layout.Row = 3;
 		txtBbox.Layout.Column = [3,4];
 		txtBbox.Tooltip = '1st output <bbox>: the rectangle corner indices';
 		%
-		lblDims = uilabel(uig);
+		lblDims = uilabel(glBR);
 		lblDims.Visible = 'on';
-		lblDims.Text = '↓ Dims [h,w]';
+		lblDims.Text = '↓ [h,w]';
 		lblDims.HorizontalAlignment = 'left';
-		lblDims.Layout.Row = 3;
+		lblDims.Layout.Row = 2;
 		lblDims.Layout.Column = [1,2];
 		%
-		txtDims = uitextarea(uig);
+		txtDims = uitextarea(glBR);
+		txtDims.BackgroundColor = clrOut;
 		txtDims.Visible = 'on';
 		txtDims.Value = 'X';
 		txtDims.Editable = false;
-		txtDims.Layout.Row = 4;
+		txtDims.Layout.Row = 3;
 		txtDims.Layout.Column = [1,2];
 		txtDims.Tooltip = '2nd output <dims>: the rectangle sizes/dimensions';
 		%
-		lblArea = uilabel(uig);
+		lblArea = uilabel(glBR);
 		lblArea.Visible = 'on';
-		lblArea.Text = 'Area';
+		lblArea.Text = 'Area:';
 		lblArea.HorizontalAlignment = 'right';
-		lblArea.Layout.Row = 3;
-		lblArea.Layout.Column = 7;
+		lblArea.Layout.Row = 2;
+		lblArea.Layout.Column = [6,7];
 		%
-		txtArea = uieditfield(uig,'numeric');
+		txtArea = uieditfield(glBR,'numeric');
+		txtArea.BackgroundColor = clrOut;
 		txtArea.Visible = 'on';
 		txtArea.Value = 0;
 		txtArea.Editable = false;
-		txtArea.Layout.Row = 3;
+		txtArea.Layout.Row = 2;
 		txtArea.Layout.Column = 8;
 		txtArea.Tooltip = '3rd output <area>: the rectangle area';
 		%
-		lblInfo = uilabel(uig);
+		lblInfo = uilabel(glBR);
 		lblInfo.Visible = 'on';
 		lblInfo.Text = '↓ Info';
 		lblInfo.HorizontalAlignment = 'left';
-		lblInfo.Layout.Row = 3;
+		lblInfo.Layout.Row = 2;
 		lblInfo.Layout.Column = [5,6];
 		%
-		txtInfo = uitextarea(uig);
+		txtInfo = uitextarea(glBR);
+		txtInfo.BackgroundColor = clrOut;
 		txtInfo.Visible = 'on';
 		txtInfo.Value = 'X';
 		txtInfo.Editable = false;
 		txtInfo.FontColor = fgc;
 		txtInfo.FontName = 'monospaced';
-		txtInfo.Layout.Row = 4;
+		txtInfo.Layout.Row = 3;
 		txtInfo.Layout.Column = [5,8];
 		txtInfo.Tooltip = '4th output <info>: algorithm information';
 	end
@@ -521,7 +678,7 @@ end
 		hue = (4*pi/3) + linspace(0, 2*pi, N+1);
 		hue(end) = [];
 		Lab  = [hue(:), C*cos(hue(:)), C*sin(hue(:))];
-		Lab(:,1) = 0.55 + 0.20*clrR(1); % 0.55 light mode, 0.75 dark mode.
+		Lab(:,1) = 0.55 + 0.20*clrF(1); % 0.55 light mode, 0.75 dark mode.
 		colors = min(1, max(0, OKLab2sRGB(Lab)));
 	end
 %
@@ -609,8 +766,8 @@ mask = false(M,N);
 mask(sub2ind([M,N],pxr,pxc)) = true;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2Idx2Mask
-function S = flb2DemoMatrices()
-% Define some interesting example matrices
+function S = flb2DemoMasks()
+% Define some preset 2D binary masks for the example dropdown.
 %
 S(9).name = 'Smiley Face';
 S(9).default = [1,1,0,0,1,1,1,1,1,0,1,1;1,0,1,1,0,1,1,1,0,0,1,1;1,0,1,1,0,1,1,1,1,0,1,1;1,0,1,1,0,1,1,1,1,0,1,1;1,1,0,0,1,1,1,1,0,0,0,1;1,1,1,1,1,1,1,1,1,1,1,1;1,1,1,1,1,1,1,1,1,1,1,1;0,0,1,1,1,1,1,1,1,1,0,0;0,0,0,1,1,1,1,1,1,0,0,0;1,0,0,0,0,0,0,0,0,0,0,1;1,1,0,0,0,0,0,0,0,0,1,1];
@@ -647,7 +804,7 @@ S(1).name = 'Random';
 S(1).default = randi(0:1,6,8);
 %
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2DemoMatrices
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2DemoMasks
 % Copyright (c) 2026 Stephen Cobeldick
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:

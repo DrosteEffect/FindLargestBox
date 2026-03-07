@@ -1,4 +1,5 @@
-%% |FINDLARGESTBOX3D| Examples
+%% |FINDLARGESTBOX3D| User Guide
+%
 % The function <https://www.mathworks.com/matlabcentral/fileexchange/######
 % |findLargestBox3D|> finds the maximum-volume axis-aligned cuboid(s)
 % within a 3D boolean mask using an exact slab-collapse algorithm.

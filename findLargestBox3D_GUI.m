@@ -30,7 +30,7 @@ function [bbox,dims,volume,info] = findLargestBox3D_GUI(varargin)
 persistent fgh fgc axArr imArr recArr sldArr edtArr grdArr ...
 	spinN cstrSpn cstrFlds stpo egArr actIdx actCand memFun ...
 	clr0 clr1 clrF clrIn clrOut drpCase txtBbox txtDims txtVol txtInfo ...
-	bboxOut dimsOut volOut infoOut btnPrev btnNext lblCand
+	bboxOut dimsOut volOut infoOut btnPrev btnNext lblCand glSL
 % R2020b: uigridlayout, uislider, disableDefaultInteractivity
 % R2017a: memoize
 % R2016a: uifigure
@@ -212,6 +212,8 @@ end
 		axArr(2).XLim = [0.5,nP+0.5];  axArr(2).YLim = [0.5,nR+0.5];
 		axArr(3).XLim = [0.5,nC+0.5];  axArr(3).YLim = [0.5,nR+0.5];
 		%
+		glSL.ColumnWidth = {sprintf('%dx',nP),sprintf('%dx',nP),sprintf('%dx',nC)};
+		%
 		flb3UpdateGrid()
 		flb3UpdateSlices()
 		flb3ComputeAndDisplay()
@@ -292,6 +294,8 @@ end
 		axArr(1).XLim = [0.5,nP+0.5];  axArr(1).YLim = [0.5,nC+0.5];
 		axArr(2).XLim = [0.5,nP+0.5];  axArr(2).YLim = [0.5,nR+0.5];
 		axArr(3).XLim = [0.5,nC+0.5];  axArr(3).YLim = [0.5,nR+0.5];
+		%
+		glSL.ColumnWidth = {sprintf('%dx',nP),sprintf('%dx',nP),sprintf('%dx',nC)};
 		%
 		flb3UpdateGrid()
 		flb3UpdateSlices()
@@ -627,6 +631,7 @@ end
 			try %#ok<TRYNC>
 				ax.Tooltip = sliceTips{si};
 			end
+			axis(ax,'equal');
 			%
 			% Suppress the datatip dot and wire click-to-toggle.
 			ax.ButtonDownFcn = {@flb3ClickClBk, sliceIds{si}};
@@ -737,8 +742,13 @@ end
 		%% Sliders Row %%
 		%
 		mask0 = egArr(actIdx).current;
-		[nR0, nC0, nP0] = size(mask0);
-		nR0=max(nR0,1);  nC0=max(nC0,1);  nP0=max(nP0,1);
+		%
+		[nR0,nC0,nP0] = size(mask0);
+		nR0=max(nR0,1);
+		nC0=max(nC0,1);
+		nP0=max(nP0,1);
+		%
+		glSL.ColumnWidth = {sprintf('%dx',nP0),sprintf('%dx',nP0),sprintf('%dx',nC0)};
 		%
 		glSLD = uigridlayout(glMG, [3,3]);
 		glSLD.Padding       = [0,0,0,0];

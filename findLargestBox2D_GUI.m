@@ -27,12 +27,13 @@ function [bbox,dims,area,info] = findLargestBox2D_GUI(varargin)
 % * findLargestBox2D.m function
 %
 % See also FINDLARGESTBOX2D FINDLARGESTBOX3D FINDLARGESTBOX3D_GUI
-persistent fgh fgc axh imh txPool actIdx memFun drpCase ...
-	spinX spinY spinN txtBbox txtDims txtArea txtInfo clr0 clr1 clrF ...
-	clrIn clrOut stpo cstrSpn cstrFlds
-% R2020b: uigridlayout
-% R2017a: memoize
-% R2016a: uifigure
+persistent fgh fnhSetVals fnhGetVals
+% Release | Feature
+% --------|--------
+% R2020b  | uigridlayout
+% R2017a  | memoize
+% R2016a  | uifigure
+% R2009b  | tilde argument placeholder
 %
 %% Default Option Values %%
 %
@@ -69,8 +70,11 @@ egMat = egMat(end:-1:1);
 varg = varargin(id1:end);
 dfns = fieldnames(stpo);
 %
-if isscalar(varg) && isstruct(varg{1})
+if isscalar(varg)
 	opts = varg{1};
+	assert(isstruct(opts)&&isscalar(opts),...
+		'SC:findLargestBox2D_GUI:options:notScalarStruct',...
+		'Optional inputs must be in one scalar structure or name-value pairs.')
 	fnms = fieldnames(opts);
 	for kk = 1:numel(fnms)
 		ix = strcmpi(fnms{kk},dfns);
@@ -86,37 +90,398 @@ else
 				stpo.(dfns{ix}) = varg{kk+1};
 			end
 		else
-			error('SC:findLargestBox2D_GUI:notNameValuePairs',...
+			error('SC:findLargestBox2D_GUI:options:notNameValuePairs',...
 				'Optional inputs must be in one scalar structure or name-value pairs.')
 		end
 	end
 end
 %
+%% Ensure Figure %%
+%
 if isempty(fgh) || ~ishghandle(fgh)
-	actIdx = 1;
-	flb2NewFigure()
+	[fgh,fnhSetVals,fnhGetVals] = flb2NewFig(egMat,stpo);
 else
-	actIdx = drpCase.ValueIndex;
-	spinN.Value = stpo.maxN;
-	for kk = 1:numel(cstrFlds)
-		cstrSpn(kk).Value = stpo.(cstrFlds{kk});
-	end
 	figure(fgh)
 end
 %
-if isempty(memFun)
-	memFun = memoize(@findLargestBox2D);
-end
-%
-flb2DropClBk()
+fnhSetVals(egMat,stpo)
 %
 if nargout
 	waitfor(fgh)
-	% Return results from active mask when GUI closes
-	[bbox,dims,area,info] = memFun(egMat(actIdx).current,stpo);
-else
-	clear bbox
+	[bbox,dims,area,info] = fnhGetVals(nargout);
 end
+%
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D_GUI
+function [uif,svh,gvh] = flb2NewFig(egMat,stpo)
+% Create the graphics objects. Define all callback functions in one workspace.
+%
+actIdx = 1;
+memFun = memoize(@findLargestBox2D);
+%
+%% Create Figure %%
+%
+uif = uifigure();
+uif.Name = 'Interactive Largest Rectangle Demo';
+uif.Tag = mfilename();
+uif.HandleVisibility = 'off';
+uif.IntegerHandle = 'off';
+%
+% Create a temporary label to get foreground color for light/dark detection
+tmpLbl = uilabel(uif);
+fgc = tmpLbl.FontColor;
+delete(tmpLbl);
+%
+fgg = fgc*[0.298936;0.587043;0.114021]; % perceived luminance
+if fgg<0.54 % lightmode
+	clr0 = [0.95,0.85,0.85]; % FALSE
+	clr1 = [0.85,0.95,0.85]; % TRUE
+	clrF = [0,0,0]; % foreground
+	clrIn  = [0.75, 0.80, 1.00]; % inputs
+	clrOut = [0.92, 0.92, 1.00]; % outputs
+else % darkmode
+	clr0 = [0.25,0.15,0.15]; % FALSE
+	clr1 = [0.15,0.25,0.15]; % TRUE
+	clrF = [1,1,1]; % foreground
+	clrIn  = [0.25, 0.20, 0.00]; % inputs
+	clrOut = [0.13, 0.13, 0.25]; % outputs
+end
+%
+% Main grid layout
+glMG = uigridlayout(uif,[2,2]);
+glMG.RowHeight = {'1x','fit'};
+glMG.ColumnWidth = {'1x','fit'};
+%
+% Bottom row layout
+glBR = uigridlayout(glMG,[3,8]);
+glBR.Padding = [0,0,0,0];
+glBR.RowHeight = {'fit','fit','fit'};
+glBR.ColumnWidth = {'fit','1x','fit','1x','fit','2x','1x','1x'};
+glBR.Layout.Row = 2;
+glBR.Layout.Column = [1,2];
+%
+% Right column layout
+glRC = uigridlayout(glMG,[4,1]);
+glRC.Padding = [0,0,0,0];
+glRC.RowHeight = {'fit','fit','fit','1x'};
+glRC.ColumnWidth = {123};
+glRC.Layout.Row = 1;
+glRC.Layout.Column = 2;
+%
+gl2C = uigridlayout(glRC,[6,2]);
+gl2C.Padding = [0,0,0,0];
+gl2C.RowHeight = {'fit','fit','fit','fit','fit','fit'};
+gl2C.ColumnWidth = {'1x','1x'};
+gl2C.RowSpacing = 5;
+gl2C.Layout.Row = 3;
+gl2C.Layout.Column = 1;
+%
+%% Area/Height/Width Limits
+%
+lblN = uilabel(glRC);
+lblN.Visible = 'on';
+lblN.Text = '↓ Max. # Rectangles';
+lblN.HorizontalAlignment = 'center';
+lblN.Layout.Row = 1;
+lblN.Layout.Column = 1;
+%
+spinN = uispinner(glRC);
+spinN.BackgroundColor = clrIn;
+spinN.Visible = 'on';
+spinN.Limits = [1,Inf];
+spinN.Step = 1;
+spinN.Value = stpo.maxN;
+spinN.RoundFractionalValues = 'on';
+spinN.ValueChangedFcn = {@flb2OptionsClBk,'maxN'};
+spinN.Layout.Row = 2;
+spinN.Layout.Column = 1;
+spinN.Tooltip = 'Option <maxN>: the maximum number of rectangles';
+%
+CName = {'Area';   'Height';  'Width'};
+CUnit = {'pixels'; 'rows';    'columns'};
+CWord = {'Minimum', 'Maximum'};
+numNm = numel(CName);
+numWd = numel(CWord);
+cstrDef(numNm,numWd) = struct('label','','field','','tooltip','');
+%
+% Couple min/max values
+for ii = 1:numNm
+	for jj = 1:numWd
+		fld = [lower(CWord{jj}(1:3)),CName{ii}];
+		cstrDef(ii,jj).label = sprintf('↓ %s%s',CWord{jj}(1:3),CName{ii}(1));
+		cstrDef(ii,jj).field = fld;
+		cstrDef(ii,jj).tooltip = sprintf('Option <%s>: %s rectangle %s (%s)',...
+			fld, lower(CWord{jj}), lower(CName{ii}), CUnit{ii});
+	end
+end
+%
+cstrSpn = gobjects(numNm,numWd);
+%
+for ii = 1:numNm
+	for jj = 1:numWd
+		lbl = uilabel(gl2C);
+		lbl.Visible = 'on';
+		lbl.Text = cstrDef(ii,jj).label;
+		lbl.HorizontalAlignment = 'center';
+		lbl.Layout.Row = 2*ii-1;
+		lbl.Layout.Column = jj;
+		%
+		spn = uispinner(gl2C);
+		spn.BackgroundColor = clrIn;
+		spn.Visible = 'on';
+		spn.Limits = [1,Inf];
+		spn.Step = 1;
+		spn.Value = stpo.(cstrDef(ii,jj).field);
+		spn.RoundFractionalValues = 'on';
+		spn.Layout.Row = 2*ii;
+		spn.Layout.Column = jj;
+		spn.Tooltip = cstrDef(ii,jj).tooltip;
+		cstrSpn(ii,jj) = spn;
+	end
+end
+bFcns = {@max, @min};
+for ii = 1:numNm
+	for jj = 1:numWd
+		pSpn = cstrSpn(ii,3-jj);
+		pFld = cstrDef(ii,3-jj).field;
+		cstrSpn(ii,jj).ValueChangedFcn = {@flb2OptionsClBk, cstrDef(ii,jj).field, pSpn, pFld, bFcns{jj}};
+	end
+end
+cstrFlds = {cstrDef.field};
+%
+%% Main Axes
+%
+uip1 = uipanel(glMG);
+uip1.BorderType = 'none';
+uip1.BorderWidth = 0;
+uip1.Title = '';
+uip1.Layout.Row = 1;
+uip1.Layout.Column = 1;
+%
+ax0 = uiaxes(uip1);
+ax0.XLim = 0:1;
+ax0.YLim = 0:1;
+ax0.XTick = [];
+ax0.YTick = [];
+ax0.Box = 'off';
+ax0.Visible = 'off';
+ax0.Toolbar.Visible = 'off';
+ax0.Units = 'normalized';
+ax0.Position = [0,0,1,1];
+ax0.PositionConstraint = 'outerposition';
+ax0.NextPlot = 'add';
+text(ax0, 0.5, 0.5, 'Empty Mask!', 'Visible','on',...
+	'HorizontalAlignment','center','Color',[1,0,0],...
+	'VerticalAlignment','middle', 'FontSize',14)
+%
+% Single shared axes for all examples
+mask = egMat(actIdx).current;
+[szY,szX] = size(mask);
+%
+axh = axes(uip1); % AXES are the only reliable way to get precise position control.
+axh.XLim = [0.5,max(1,szX)+0.5];
+axh.YLim = [0.5,max(1,szY)+0.5];
+axh.XTick = [];
+axh.YTick = [];
+axh.XLabel.String = '';
+axh.YLabel.String = '';
+axh.Box = 'on';
+axh.YDir = 'reverse';
+axh.ButtonDownFcn = @flb2ClickClBk;
+axh.Visible = 'off';
+axh.Toolbar.Visible = 'off';
+axh.Colormap = [clr0;clr1];
+axh.CLim = [0,1];
+axh.Units = 'normalized';
+axh.Position = [0,0,1,1];
+axh.PositionConstraint = 'innerposition';
+axh.NextPlot = 'add';
+try %#ok<TRYNC>
+	axh.Tooltip = 'Click on the cells to toggle the values!';
+end
+%
+uip1.AutoResizeChildren = 'off';
+uip1.SizeChangedFcn = @(~,~)set([ax0,axh],'Position',[0,0,1,1], 'Units','normalized');
+%
+% Shared image — content is populated via fnhSetVals -> flb2UpdateDimensions
+imh = imagesc(axh, false(max(1,szY),max(1,szX)), 'ButtonDownFcn',@flb2ClickClBk);
+uistack(imh,'bottom')
+%
+% Text pool starts empty; flb2UpdateDimensions grows it as needed
+txPool = gobjects(0,0);
+%
+%% Mask Size
+%
+lblY = uilabel(glBR);
+lblY.Visible = 'on';
+lblY.Text = 'Rows:';
+lblY.HorizontalAlignment = 'right';
+lblY.Layout.Row = 1;
+lblY.Layout.Column = 1;
+%
+spinY = uispinner(glBR);
+spinY.Visible = 'on';
+spinY.Limits = [0,Inf];
+spinY.Step = 1;
+spinY.Value = szY;
+spinY.RoundFractionalValues = 'on';
+spinY.ValueChangedFcn = {@flb2SpinClBk,'rows'};
+spinY.Layout.Row = 1;
+spinY.Layout.Column = 2;
+spinY.Tooltip = 'Number of rows in the current example';
+%
+lblX = uilabel(glBR);
+lblX.Visible = 'on';
+lblX.Text = 'Columns:';
+lblX.HorizontalAlignment = 'right';
+lblX.Layout.Row = 1;
+lblX.Layout.Column = 3;
+%
+spinX = uispinner(glBR);
+spinX.Visible = 'on';
+spinX.Limits = [0,Inf];
+spinX.Step = 1;
+spinX.Value = szX;
+spinX.RoundFractionalValues = 'on';
+spinX.ValueChangedFcn = {@flb2SpinClBk,'cols'};
+spinX.Layout.Row = 1;
+spinX.Layout.Column = 4;
+spinX.Tooltip = 'Number of columns in the current mask';
+%
+%% Examples Menu
+%
+txtCase = uilabel(glBR);
+txtCase.Visible = 'on';
+txtCase.Text = 'Example:';
+txtCase.HorizontalAlignment = 'right';
+txtCase.Layout.Row = 1;
+txtCase.Layout.Column = 5;
+%
+drpCase = uidropdown(glBR);
+drpCase.Visible = 'on';
+drpCase.Items = {egMat.name};
+drpCase.Layout.Row = 1;
+drpCase.Layout.Column = [6,7];
+drpCase.Tooltip = 'Select preset example or user mask';
+drpCase.ValueChangedFcn = @flb2DropClBk;
+%
+btnReset = uibutton(glBR);
+btnReset.Visible = 'on';
+btnReset.Text = 'Reset';
+btnReset.Layout.Row = 1;
+btnReset.Layout.Column = 8;
+btnReset.Tooltip = 'Reset the current mask to original values and dimensions';
+btnReset.ButtonPushedFcn = @flb2ResetClBk;
+%
+%% Output Display
+%
+lblBbox = uilabel(glBR);
+lblBbox.Visible = 'on';
+lblBbox.Text = '↓ [r1,r2,c1,c2]';
+lblBbox.HorizontalAlignment = 'left';
+lblBbox.Layout.Row = 2;
+lblBbox.Layout.Column = [3,4];
+%
+txtBbox = uitextarea(glBR);
+txtBbox.BackgroundColor = clrOut;
+txtBbox.Visible = 'on';
+txtBbox.Value = 'X';
+txtBbox.Editable = false;
+txtBbox.Layout.Row = 3;
+txtBbox.Layout.Column = [3,4];
+txtBbox.Tooltip = '1st output <bbox>: the rectangle corner indices';
+%
+lblDims = uilabel(glBR);
+lblDims.Visible = 'on';
+lblDims.Text = '↓ [h,w]';
+lblDims.HorizontalAlignment = 'left';
+lblDims.Layout.Row = 2;
+lblDims.Layout.Column = [1,2];
+%
+txtDims = uitextarea(glBR);
+txtDims.BackgroundColor = clrOut;
+txtDims.Visible = 'on';
+txtDims.Value = 'X';
+txtDims.Editable = false;
+txtDims.Layout.Row = 3;
+txtDims.Layout.Column = [1,2];
+txtDims.Tooltip = '2nd output <dims>: the rectangle sizes/dimensions';
+%
+lblArea = uilabel(glBR);
+lblArea.Visible = 'on';
+lblArea.Text = 'Area:';
+lblArea.HorizontalAlignment = 'right';
+lblArea.Layout.Row = 2;
+lblArea.Layout.Column = [6,7];
+%
+txtArea = uieditfield(glBR,'numeric');
+txtArea.BackgroundColor = clrOut;
+txtArea.Visible = 'on';
+txtArea.Value = 0;
+txtArea.Editable = false;
+txtArea.Layout.Row = 2;
+txtArea.Layout.Column = 8;
+txtArea.Tooltip = '3rd output <area>: the rectangle area';
+%
+lblInfo = uilabel(glBR);
+lblInfo.Visible = 'on';
+lblInfo.Text = '↓ Info';
+lblInfo.HorizontalAlignment = 'left';
+lblInfo.Layout.Row = 2;
+lblInfo.Layout.Column = [5,6];
+%
+txtInfo = uitextarea(glBR);
+txtInfo.BackgroundColor = clrOut;
+txtInfo.Visible = 'on';
+txtInfo.Value = 'X';
+txtInfo.Editable = false;
+txtInfo.FontColor = fgc;
+txtInfo.FontName = 'monospaced';
+txtInfo.Layout.Row = 3;
+txtInfo.Layout.Column = [5,8];
+txtInfo.Tooltip = '4th output <info>: algorithm information';
+%
+%% Set & Get Functions %%
+%
+gvh = @flb2GetVals;
+svh = @flb2SetVals;
+%
+	function flb2SetVals(newEgMat,newStpo)
+		% Push fresh egMat and stpo into this workspace, then refresh display.
+		% Called on every invocation of findLargestBox2D_GUI (first and re-calls).
+		%
+		% Delete any rectangles still visible from the previous session.
+		try %#ok<TRYNC>
+			delete(egMat(actIdx).rectangles)
+		end
+		%
+		egMat = newEgMat;
+		stpo  = newStpo;
+		%
+		% Initialise the rectangle store for all examples.
+		for jjj = 1:numel(egMat)
+			egMat(jjj).rectangles = gobjects(0);
+		end
+		%
+		% Rebuild dropdown items (may differ if a user mask was added/removed).
+		drpCase.Items = {egMat.name};
+		actIdx = min(actIdx,numel(egMat)); % keep current selection where possible
+		drpCase.ValueIndex = actIdx;
+		%
+		% Sync option spinners with the new stpo values.
+		spinN.Value = stpo.maxN;
+		for kk = 1:numel(cstrFlds)
+			cstrSpn(kk).Value = stpo.(cstrFlds{kk});
+		end
+		%
+		flb2DropClBk()
+	end
+%
+	function varargout = flb2GetVals(no)
+		% Return outputs for the active mask when the GUI closes.
+		varargout = cell(1,4);
+		[varargout{1:no}] = memFun(egMat(actIdx).current,stpo);
+	end
 %
 %% Callback Functions %%
 %
@@ -260,8 +625,8 @@ end
 %
 	function flb2ComputeAndDisplay() % Compute rectangle and update displays
 		%
-		fgp = fgh.Pointer;
-		fgh.Pointer = 'watch';
+		fgp = uif.Pointer;
+		uif.Pointer = 'watch';
 		drawnow()
 		%
 		mask = egMat(actIdx).current;
@@ -272,7 +637,7 @@ end
 		try
 			[bboxOut,dimsOut,areaOut,infoOut] = memFun(mask,stpo);
 		catch ME
-			fgh.Pointer = fgp;
+			uif.Pointer = fgp;
 			if startsWith(ME.identifier,'SC:findLargestBox2D:')
 				txtInfo.FontColor = [1,0,0];
 				txtInfo.Value = sprintf('Error: %s',ME.message);
@@ -294,16 +659,16 @@ end
 			nmR = size(bboxOut,1);
 			reH = gobjects(1,nmR);
 			colors = flb2RectColors(nmR);
-			for ii = 1:nmR
-				r1 = bboxOut(ii,1);
-				r2 = bboxOut(ii,2);
-				c1 = bboxOut(ii,3);
-				c2 = bboxOut(ii,4);
-				reH(ii) = rectangle(axh,...
+			for kk = 1:nmR
+				r1 = bboxOut(kk,1);
+				r2 = bboxOut(kk,2);
+				c1 = bboxOut(kk,3);
+				c2 = bboxOut(kk,4);
+				reH(kk) = rectangle(axh,...
 					'Position',[c1-0.5, r1-0.5, c2-c1+1, r2-r1+1],...
-					'EdgeColor',colors(ii,:),...
+					'EdgeColor',colors(kk,:),...
 					'LineWidth',3);
-				uistack(reH(ii),'top');
+				uistack(reH(kk),'top');
 			end
 			egMat(actIdx).rectangles = reH;
 			%
@@ -326,349 +691,9 @@ end
 		%
 		imh.Visible = 'on';
 		%
-		fgh.Pointer = fgp;
+		uif.Pointer = fgp;
 		%
 		drawnow
-	end
-%
-	function flb2NewFigure()
-		%
-		fgh = uifigure();
-		fgh.Name = 'Interactive Largest Rectangle Demo';
-		fgh.Tag = mfilename;
-		fgh.HandleVisibility = 'off';
-		fgh.IntegerHandle = 'off';
-		%
-		% Create a temporary label to get foreground color for light/dark detection
-		tmpLbl = uilabel(fgh);
-		fgc = tmpLbl.FontColor;
-		delete(tmpLbl);
-		%
-		fgg = fgc*[0.298936;0.587043;0.114021]; % perceived luminance
-		if fgg<0.54 % lightmode
-			clr0 = [0.95,0.85,0.85]; % FALSE
-			clr1 = [0.85,0.95,0.85]; % TRUE
-			clrF = [0,0,0]; % foreground
-			clrIn  = [0.75, 0.80, 1.00]; % inputs
-			clrOut = [0.92, 0.92, 1.00]; % outputs
-		else % darkmode
-			clr0 = [0.25,0.15,0.15]; % FALSE
-			clr1 = [0.15,0.25,0.15]; % TRUE
-			clrF = [1,1,1]; % foreground
-			clrIn  = [0.25, 0.20, 0.00]; % inputs
-			clrOut = [0.13, 0.13, 0.25]; % outputs
-		end
-		%
-		% Main grid layout
-		glMG = uigridlayout(fgh,[2,2]);
-		glMG.RowHeight = {'1x','fit'};
-		glMG.ColumnWidth = {'1x','fit'};
-		%
-		% Bottom row layout
-		glBR = uigridlayout(glMG,[3,8]);
-		glBR.Padding = [0,0,0,0];
-		glBR.RowHeight = {'fit','fit','fit'};
-		glBR.ColumnWidth = {'fit','1x','fit','1x','fit','2x','1x','1x'};
-		glBR.Layout.Row = 2;
-		glBR.Layout.Column = [1,2];
-		%
-		% Right column layout
-		glRC = uigridlayout(glMG,[4,1]);
-		glRC.Padding = [0,0,0,0];
-		glRC.RowHeight = {'fit','fit','fit','1x'};
-		glRC.ColumnWidth = {123};
-		glRC.Layout.Row = 1;
-		glRC.Layout.Column = 2;
-		%
-		gl2C = uigridlayout(glRC,[6,2]);
-		gl2C.Padding = [0,0,0,0];
-		gl2C.RowHeight = {'fit','fit','fit','fit','fit','fit'};
-		gl2C.ColumnWidth = {'1x','1x'};
-		gl2C.RowSpacing = 5;
-		gl2C.Layout.Row = 3;
-		gl2C.Layout.Column = 1;
-		%
-		%% Area/Height/Width Limits
-		%
-		lblN = uilabel(glRC);
-		lblN.Visible = 'on';
-		lblN.Text = '↓ Max. # Rectangles';
-		lblN.HorizontalAlignment = 'center';
-		%lblN.VerticalAlignment = 'bottom';
-		lblN.Layout.Row = 1;
-		lblN.Layout.Column = 1;
-		%
-		spinN = uispinner(glRC);
-		spinN.BackgroundColor = clrIn;
-		spinN.Visible = 'on';
-		spinN.Limits = [1,Inf];
-		spinN.Step = 1;
-		spinN.Value = stpo.maxN;
-		spinN.RoundFractionalValues = 'on';
-		spinN.ValueChangedFcn = {@flb2OptionsClBk,'maxN'};
-		spinN.Layout.Row = 2;
-		spinN.Layout.Column = 1;
-		spinN.Tooltip = 'Option <maxN>: the maximum number of rectangles';
-		%
-		CName = {'Area';   'Height';  'Width'};
-		CUnit = {'pixels'; 'rows';    'columns'};
-		CWord = {'Minimum', 'Maximum'};
-		numNm = numel(CName);
-		numWd = numel(CWord);
-		cstrDef(numNm,numWd) = struct('label','','field','','tooltip','');
-		%
-		% Couple min/max values
-		for ii = 1:numNm
-			for jj = 1:numWd
-				fld = [lower(CWord{jj}(1:3)),CName{ii}];
-				cstrDef(ii,jj).label = sprintf('↓ %s%s',CWord{jj}(1:3),CName{ii}(1));
-				cstrDef(ii,jj).field = fld;
-				cstrDef(ii,jj).tooltip = sprintf('Option <%s>: %s rectangle %s (%s)',...
-					fld, lower(CWord{jj}), lower(CName{ii}), CUnit{ii});
-			end
-		end
-		%
-		cstrSpn = gobjects(numNm,numWd);
-		%
-		for ii = 1:numNm
-			for jj = 1:numWd
-				lbl = uilabel(gl2C);
-				lbl.Visible = 'on';
-				lbl.Text = cstrDef(ii,jj).label;
-				lbl.HorizontalAlignment = 'center';
-				lbl.Layout.Row = 2*ii-1;
-				lbl.Layout.Column = jj;
-				%
-				spn = uispinner(gl2C);
-				spn.BackgroundColor = clrIn;
-				spn.Visible = 'on';
-				spn.Limits = [1,Inf];
-				spn.Step = 1;
-				spn.Value = stpo.(cstrDef(ii,jj).field);
-				spn.RoundFractionalValues = 'on';
-				%spn.ValueChangedFcn = {@flb2OptionsClBk, cstrDef(ii,jj).field};
-				spn.Layout.Row = 2*ii;
-				spn.Layout.Column = jj;
-				spn.Tooltip = cstrDef(ii,jj).tooltip;
-				cstrSpn(ii,jj) = spn;
-			end
-		end
-		bFcns = {@max, @min};
-		for ii = 1:numNm
-			for jj = 1:numWd
-				pSpn = cstrSpn(ii,3-jj);
-				pFld = cstrDef(ii,3-jj).field;
-				cstrSpn(ii,jj).ValueChangedFcn = {@flb2OptionsClBk, cstrDef(ii,jj).field, pSpn, pFld, bFcns{jj}};
-			end
-		end
-		cstrFlds = {cstrDef.field};
-		%
-		%% Main Axes
-		%
-		uip1 = uipanel(glMG);
-		uip1.BorderType = 'none';
-		uip1.BorderWidth = 0;
-		uip1.Title = '';
-		uip1.Layout.Row = 1;
-		uip1.Layout.Column = 1;
-		%
-		ax0 = uiaxes(uip1);
-		ax0.XLim = 0:1;
-		ax0.YLim = 0:1;
-		ax0.XTick = [];
-		ax0.YTick = [];
-		ax0.Box = 'off';
-		ax0.Visible = 'off';
-		ax0.Toolbar.Visible = 'off';
-		ax0.Units = 'normalized';
-		ax0.Position = [0,0,1,1];
-		ax0.PositionConstraint = 'outerposition';
-		ax0.NextPlot = 'add';
-		text(ax0, 0.5, 0.5, 'Empty Mask!', 'Visible','on',...
-			'HorizontalAlignment','center','Color',[1,0,0],...
-			'VerticalAlignment','middle', 'FontSize',14)
-		%
-		% Single shared axes for all examples
-		mask = egMat(actIdx).current;
-		[szY,szX] = size(mask);
-		%
-		axh = axes(uip1); % AXES are the only reliable way to get precise position control.
-		axh.XLim = [0.5,max(1,szX)+0.5];
-		axh.YLim = [0.5,max(1,szY)+0.5];
-		axh.XTick = [];
-		axh.YTick = [];
-		axh.XLabel.String = '';
-		axh.YLabel.String = '';
-		axh.Box = 'on';
-		axh.YDir = 'reverse';
-		axh.ButtonDownFcn = @flb2ClickClBk;
-		axh.Visible = 'off';
-		axh.Toolbar.Visible = 'off';
-		axh.Colormap = [clr0;clr1];
-		axh.CLim = [0,1];
-		axh.Units = 'normalized';
-		axh.Position = [0,0,1,1];
-		axh.PositionConstraint = 'innerposition';
-		axh.NextPlot = 'add';
-		try %#ok<TRYNC>
-			axh.Tooltip = 'Click on the cells to toggle the values!';
-		end
-		%
-		uip1.AutoResizeChildren = 'off';
-		uip1.SizeChangedFcn = @(~,~)set([ax0,axh],'Position',[0,0,1,1], 'Units','normalized');
-		%
-		% Shared image
-		imh = imagesc(axh, mask, 'ButtonDownFcn',@flb2ClickClBk);
-		uistack(imh,'bottom')
-		%
-		% Initial text pool for the active example
-		if numel(mask)
-			matC = char('0'+mask);
-			[matX,matY] = meshgrid(1:szX,1:szY);
-			txPool = text(axh, matX(:), matY(:), matC(:),...
-				'HorizontalAlignment','center', 'Color',clrF,...
-				'VerticalAlignment','middle', 'FontSize',10,...
-				'ButtonDownFcn',@flb2ClickClBk);
-			txPool = reshape(txPool,szY,szX);
-		else
-			txPool = gobjects(0,0);
-		end
-		%
-		% Initialise rectangle store for all examples
-		for jjj = 1:numel(egMat)
-			egMat(jjj).rectangles = gobjects(0);
-		end
-		%
-		%% Mask Size
-		%
-		lblY = uilabel(glBR);
-		lblY.Visible = 'on';
-		lblY.Text = 'Rows:';
-		lblY.HorizontalAlignment = 'right';
-		lblY.Layout.Row = 1;
-		lblY.Layout.Column = 1;
-		%
-		spinY = uispinner(glBR);
-		spinY.Visible = 'on';
-		spinY.Limits = [0,Inf];
-		spinY.Step = 1;
-		spinY.Value = szY;
-		spinY.RoundFractionalValues = 'on';
-		spinY.ValueChangedFcn = {@flb2SpinClBk,'rows'};
-		spinY.Layout.Row = 1;
-		spinY.Layout.Column = 2;
-		spinY.Tooltip = 'Number of rows in the current example';
-		%
-		lblX = uilabel(glBR);
-		lblX.Visible = 'on';
-		lblX.Text = 'Columns:';
-		lblX.HorizontalAlignment = 'right';
-		lblX.Layout.Row = 1;
-		lblX.Layout.Column = 3;
-		%
-		spinX = uispinner(glBR);
-		spinX.Visible = 'on';
-		spinX.Limits = [0,Inf];
-		spinX.Step = 1;
-		spinX.Value = szX;
-		spinX.RoundFractionalValues = 'on';
-		spinX.ValueChangedFcn = {@flb2SpinClBk,'cols'};
-		spinX.Layout.Row = 1;
-		spinX.Layout.Column = 4;
-		spinX.Tooltip = 'Number of columns in the current mask';
-		%
-		%% Examples Menu
-		%
-		txtCase = uilabel(glBR);
-		txtCase.Visible = 'on';
-		txtCase.Text = 'Example:';
-		txtCase.HorizontalAlignment = 'right';
-		txtCase.Layout.Row = 1;
-		txtCase.Layout.Column = 5;
-		%
-		drpCase = uidropdown(glBR);
-		drpCase.Visible = 'on';
-		drpCase.Items = {egMat.name};
-		drpCase.Layout.Row = 1;
-		drpCase.Layout.Column = [6,7];
-		drpCase.Tooltip = 'Select preset example or user mask';
-		drpCase.ValueChangedFcn = @flb2DropClBk;
-		%
-		btnReset = uibutton(glBR);
-		btnReset.Visible = 'on';
-		btnReset.Text = 'Reset';
-		btnReset.Layout.Row = 1;
-		btnReset.Layout.Column = 8;
-		btnReset.Tooltip = 'Reset the current mask to original values and dimensions';
-		btnReset.ButtonPushedFcn = @flb2ResetClBk;
-		%
-		%% Output Display
-		%
-		lblBbox = uilabel(glBR);
-		lblBbox.Visible = 'on';
-		lblBbox.Text = '↓ [r1,r2,c1,c2]';
-		lblBbox.HorizontalAlignment = 'left';
-		lblBbox.Layout.Row = 2;
-		lblBbox.Layout.Column = [3,4];
-		%
-		txtBbox = uitextarea(glBR);
-		txtBbox.BackgroundColor = clrOut;
-		txtBbox.Visible = 'on';
-		txtBbox.Value = 'X';
-		txtBbox.Editable = false;
-		txtBbox.Layout.Row = 3;
-		txtBbox.Layout.Column = [3,4];
-		txtBbox.Tooltip = '1st output <bbox>: the rectangle corner indices';
-		%
-		lblDims = uilabel(glBR);
-		lblDims.Visible = 'on';
-		lblDims.Text = '↓ [h,w]';
-		lblDims.HorizontalAlignment = 'left';
-		lblDims.Layout.Row = 2;
-		lblDims.Layout.Column = [1,2];
-		%
-		txtDims = uitextarea(glBR);
-		txtDims.BackgroundColor = clrOut;
-		txtDims.Visible = 'on';
-		txtDims.Value = 'X';
-		txtDims.Editable = false;
-		txtDims.Layout.Row = 3;
-		txtDims.Layout.Column = [1,2];
-		txtDims.Tooltip = '2nd output <dims>: the rectangle sizes/dimensions';
-		%
-		lblArea = uilabel(glBR);
-		lblArea.Visible = 'on';
-		lblArea.Text = 'Area:';
-		lblArea.HorizontalAlignment = 'right';
-		lblArea.Layout.Row = 2;
-		lblArea.Layout.Column = [6,7];
-		%
-		txtArea = uieditfield(glBR,'numeric');
-		txtArea.BackgroundColor = clrOut;
-		txtArea.Visible = 'on';
-		txtArea.Value = 0;
-		txtArea.Editable = false;
-		txtArea.Layout.Row = 2;
-		txtArea.Layout.Column = 8;
-		txtArea.Tooltip = '3rd output <area>: the rectangle area';
-		%
-		lblInfo = uilabel(glBR);
-		lblInfo.Visible = 'on';
-		lblInfo.Text = '↓ Info';
-		lblInfo.HorizontalAlignment = 'left';
-		lblInfo.Layout.Row = 2;
-		lblInfo.Layout.Column = [5,6];
-		%
-		txtInfo = uitextarea(glBR);
-		txtInfo.BackgroundColor = clrOut;
-		txtInfo.Visible = 'on';
-		txtInfo.Value = 'X';
-		txtInfo.Editable = false;
-		txtInfo.FontColor = fgc;
-		txtInfo.FontName = 'monospaced';
-		txtInfo.Layout.Row = 3;
-		txtInfo.Layout.Column = [5,8];
-		txtInfo.Tooltip = '4th output <info>: algorithm information';
 	end
 %
 	function colors = flb2RectColors(N)
@@ -683,7 +708,7 @@ end
 	end
 %
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D_GUI
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2NewFig
 function rgb = OKLab2sRGB(Lab)
 %
 M1 = [... XYZ to approximate cone responses:

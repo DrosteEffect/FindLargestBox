@@ -118,11 +118,12 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 %          .inputFormat   : 'indices', 'matrix', or 'sparse'
 %          .rowsProcessed : number of mask rows processed
 %          .numBoxes      : number of rectangles found
+%          .totalArea     : union area of all returned rectangles
 %          .timeTotal     : total execution time in seconds
 %
 %% Dependencies %%
 %
-% * MATLAB R2009b or later.
+% * MATLAB R2008a or later.
 %
 % See also FINDLARGESTBOX3D SPARSE FULL FIND SUB2IND ACCUMARRAY POLY2MASK
 % REGIONPROPS IMFILL BWLABEL BWCONNCOMP BWAREAOPEN BWAREAFILT CONVHULL
@@ -130,6 +131,15 @@ tic0 = tic();
 bbox = [];
 dims = [];
 area = 0;
+% Release | Feature
+% --------|--------
+% R2016b  | string class & curly brace indexing   [only if string supplied]
+% R2008b  | tic/toc with timer ID: tic0=tic(); ... toc(tic0)
+% R2008a  | assert(cond,id,fmt,args...)
+% R2007a  | structfun with function handle and 'UniformOutput',false
+% R2007a  | arrayfun with multiple input arrays: arrayfun(@f,A1,...,An)
+% R2007a  | cellfun with 'UniformOutput',false
+% R2007a  | nested functions
 %
 %% Default Option Values %%
 %
@@ -153,7 +163,7 @@ elseif numel(arg) && isstruct(arg{end}) % options in a struct
 	varargin(end) = [];
 end
 %
-info = struct('options',stpo, 'rowsProcessed',0, 'numBoxes',0);
+info = struct('options',stpo, 'rowsProcessed',0, 'numBoxes',0, 'totalArea',0);
 %
 assert(stpo.minArea<=stpo.maxArea,...
 	'SC:findLargestBox2D:options:InvertedAreaValues',...
@@ -424,6 +434,14 @@ if area
 	if nargout>3
 		info.numBoxes = numel(bestR1);
 		info.box = arrayfun(@flb2Geometry, bestR1,bestR2,bestC1,bestC2,bestHt,bestWd);
+		%
+		r0 = min(bestR1);
+		c0 = min(bestC1);
+		unionMask = false(max(bestR2)-r0+1, max(bestC2)-c0+1);
+		for bi = 1:numel(bestR1)
+			unionMask(bestR1(bi)-r0+1:bestR2(bi)-r0+1, bestC1(bi)-c0+1:bestC2(bi)-c0+1) = true;
+		end
+		info.totalArea = nnz(unionMask);
 	end
 end
 %

@@ -127,13 +127,14 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 %          .slabDimension : dimension used for slab iteration (1, 2, or 3)
 %          .slabsProcessed: total slab pairs processed
 %          .numBoxes      : number of cuboids found
+%          .totalVolume   : union volume of all returned cuboids
 %          .timeTotal     : total execution time in seconds
 %          .time2DFun     : 2D function execution time in seconds
 %
 %% Dependencies %%
 %
 % * findLargestBox2D.m
-% * MATLAB R2009b or later.
+% * MATLAB R2008b or later.
 %
 % See also FINDLARGESTBOX2D SPARSE FULL FIND IND2SUB ACCUMARRAY PERMUTE
 % REGIONPROPS3 IMFILL BWLABELN BWCONNCOMP BWAREAOPEN CONVHULLN ALPHASHAPE
@@ -142,6 +143,15 @@ bbox = [];
 dims = [];
 volume = 0;
 time2D = 0;
+% Release | Feature
+% --------|--------
+% R2016b  | string class & curly brace indexing   [only if string supplied]
+% R2008b  | tic/toc with timer ID: tic0=tic(); ... toc(tic0)
+% R2008a  | assert(cond,id,fmt,args...)
+% R2007a  | structfun with function handle and 'UniformOutput',false
+% R2007a  | arrayfun with multiple input arrays: arrayfun(@f,A1,...,An)
+% R2007a  | cellfun with 'UniformOutput',false
+% R2007a  | nested functions
 %
 %% Default Options %%
 %
@@ -165,7 +175,7 @@ elseif numel(arg) && isstruct(arg{end}) % options in a struct
 	varargin(end) = [];
 end
 %
-info = struct('options',stpo, 'slabsProcessed',0, 'numBoxes',0);
+info = struct('options',stpo, 'slabsProcessed',0, 'numBoxes',0, 'totalVolume',0);
 %
 assert(stpo.minVolume<=stpo.maxVolume,...
 	'SC:findLargestBox3D:options:InvertedVolumeValues',...
@@ -447,6 +457,15 @@ if volume
 	if nargout>3
 		info.numBoxes = numel(bR1);
 		info.box = arrayfun(@flb3Geometry, bR1,bR2,bC1,bC2,bP1,bP2,bHt,bWd,bDp);
+		%
+		r0 = min(bR1);
+		c0 = min(bC1);
+		p0 = min(bP1);
+		unionMask = false(max(bR2)-r0+1, max(bC2)-c0+1, max(bP2)-p0+1);
+		for bi = 1:numel(bR1)
+			unionMask(bR1(bi)-r0+1:bR2(bi)-r0+1, bC1(bi)-c0+1:bC2(bi)-c0+1, bP1(bi)-p0+1:bP2(bi)-p0+1) = true;
+		end
+		info.totalVolume = nnz(unionMask);
 	end
 end
 %

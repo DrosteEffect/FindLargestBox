@@ -111,7 +111,7 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 %          h,w,d = the height, width, & depth of the cuboid(s), in voxels.
 %          If no cuboid is found then dims=[].
 %   volume = Numeric scalar, the volume of the largest cuboid, in voxels.
-%   info = Structure with geometry information (if a cuboid is found):
+%   info = Structure with geometry information (if one or more cuboids):
 %          .box.indices   : same as output <bbox>
 %          .box.volume    : same as output <volume>
 %          .box.corners   : [r1-1/2,r2+1/2, c1-1/2,c2+1/2, p1-1/2,p2+1/2]
@@ -127,7 +127,7 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 %          .slabDimension : dimension used for slab iteration (1, 2, or 3)
 %          .slabsProcessed: total slab pairs processed
 %          .numBoxes      : number of cuboids found
-%          .totalVolume   : union volume of all returned cuboids
+%          .unionVolume   : union of the volumes of all returned cuboids
 %          .timeTotal     : total execution time in seconds
 %          .time2DFun     : 2D function execution time in seconds
 %
@@ -175,7 +175,7 @@ elseif numel(arg) && isstruct(arg{end}) % options in a struct
 	varargin(end) = [];
 end
 %
-info = struct('options',stpo, 'slabsProcessed',0, 'numBoxes',0, 'totalVolume',0);
+info = struct('options',stpo, 'slabsProcessed',0, 'numBoxes',0, 'unionVolume',0);
 %
 assert(stpo.minVolume<=stpo.maxVolume,...
 	'SC:findLargestBox3D:options:InvertedVolumeValues',...
@@ -465,7 +465,7 @@ if volume
 		for bi = 1:numel(bR1)
 			unionMask(bR1(bi)-r0+1:bR2(bi)-r0+1, bC1(bi)-c0+1:bC2(bi)-c0+1, bP1(bi)-p0+1:bP2(bi)-p0+1) = true;
 		end
-		info.totalVolume = nnz(unionMask);
+		info.unionVolume = nnz(unionMask);
 	end
 end
 %

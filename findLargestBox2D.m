@@ -104,7 +104,7 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 %          h,w = the height and width of the rectangle(s), in pixels.
 %          If no rectangle is found then dims=[].
 %   area = Numeric scalar, the area of the rectangle(s), in pixels.
-%   info = Structure with geometry information (if a rectangle is found):
+%   info = Structure with geometry information (if one or more rectangles):
 %          .box.area      : same as output <area>
 %          .box.indices   : same as output <bbox>
 %          .box.corners   : [r1-1/2,r2+1/2,c1-1/2,c2+1/2]
@@ -118,7 +118,7 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 %          .inputFormat   : 'indices', 'matrix', or 'sparse'
 %          .rowsProcessed : number of mask rows processed
 %          .numBoxes      : number of rectangles found
-%          .totalArea     : union area of all returned rectangles
+%          .unionArea     : union of the areas of all returned rectangles
 %          .timeTotal     : total execution time in seconds
 %
 %% Dependencies %%
@@ -163,7 +163,7 @@ elseif numel(arg) && isstruct(arg{end}) % options in a struct
 	varargin(end) = [];
 end
 %
-info = struct('options',stpo, 'rowsProcessed',0, 'numBoxes',0, 'totalArea',0);
+info = struct('options',stpo, 'rowsProcessed',0, 'numBoxes',0, 'unionArea',0);
 %
 assert(stpo.minArea<=stpo.maxArea,...
 	'SC:findLargestBox2D:options:InvertedAreaValues',...
@@ -441,7 +441,7 @@ if area
 		for bi = 1:numel(bestR1)
 			unionMask(bestR1(bi)-r0+1:bestR2(bi)-r0+1, bestC1(bi)-c0+1:bestC2(bi)-c0+1) = true;
 		end
-		info.totalArea = nnz(unionMask);
+		info.unionArea = nnz(unionMask);
 	end
 end
 %

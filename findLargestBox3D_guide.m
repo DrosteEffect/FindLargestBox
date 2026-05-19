@@ -54,6 +54,7 @@ bbox = findLargestBox3D(mask)
 % * |info.inputFormat|    -- 'array' or 'indices'.
 % * |info.slabDimension|  -- dimension used for slab iteration (1, 2, or 3).
 % * |info.slabsProcessed| -- number of slab pairs processed.
+% * |info.unionVolume|    -- the union volume of all returned cuboids.
 % * |info.timeTotal|      -- total execution time in seconds.
 % * |info.time2DFun|      -- time spent inside |findLargestBox2D|.
 %
@@ -62,7 +63,7 @@ bbox = findLargestBox3D(mask)
 %
 % * |info.box.indices|  -- |[r1,r2,c1,c2,p1,p2]| (same as one row of |bbox|).
 % * |info.box.corners|  -- fractional voxel-edge coordinates:
-%                         |[r1-0.5,r2+0.5,c1-0.5,c2+0.5,p1-0.5,p2+0.5]|.
+%                          |[r1-0.5,r2+0.5,c1-0.5,c2+0.5,p1-0.5,p2+0.5]|.
 % * |info.box.diagonal| -- diagonal length (in voxels, may be fractional).
 % * |info.box.center|   -- where the diagonals meet (may be fractional).
 % * |info.box.height|   -- the height in voxels.

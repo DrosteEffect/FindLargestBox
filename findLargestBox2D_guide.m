@@ -51,13 +51,15 @@ bbox = findLargestBox2D(mask)
 % * |info.numBoxes|       -- the number of rectangles returned.
 % * |info.inputFormat|    -- 'matrix', 'indices', or 'sparse'.
 % * |info.rowsProcessed|  -- number of mask rows visited.
+% * |info.unionArea|      -- the union area of all returned rectangles.
 % * |info.timeTotal|      -- total execution time in seconds.
 %
 % When at least one rectangle is found, |info| contains the nested
 % structure array |.box| with size Nx1, which has the following fields:
 %
 % * |info.box.indices|   -- |[r1,r2,c1,c2]| (same as one row of |bbox|).
-% * |info.box.corners|   -- fractional pixel-edge coordinates |[r1-0.5,r2+0.5,c1-0.5,c2+0.5]|.
+% * |info.box.corners|   -- fractional pixel-edge coordinates
+%                           |[r1-0.5,r2+0.5,c1-0.5,c2+0.5]|.
 % * |info.box.diagonal|  -- the diagonal length (may be fractional).
 % * |info.box.center|    -- where the diagonals meet (may be fractional).
 % * |info.box.height|    -- the height in pixels.

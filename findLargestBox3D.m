@@ -5,6 +5,7 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 % boolean mask using exact slab-collapse along the smallest dimension. The
 % mask uses TRUE/non-zero for usable voxels and FALSE for unusable voxels.
 % For each slab range, a 2D footprint is analyzed using findLargestBox2D.
+% Runtime depends on the bounding span, not on the number of true values.
 %
 %%% Syntax %%%
 %
@@ -88,6 +89,8 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 % ----------|----------------|---------------------------------------------
 % maxDepth  | 1<=maxD<=Inf** | The maximum cuboid depth (# of pages).
 % ----------|----------------|---------------------------------------------
+% mkUnion   | true**         | Controls if <info> contains the union field.
+%           | false          | Calculating the union is memory intensive.
 %
 %% Input Arguments %%
 %
@@ -155,7 +158,7 @@ time2D = 0;
 %
 %% Default Options %%
 %
-stpo = struct(... Default option values
+stpo = struct('mkUnion',true,... Default option values
 	'display','silent', 'maxN',Inf, 'minVolume',1, 'maxVolume',Inf, ...
 	'minHeight',1, 'maxHeight',Inf, 'minWidth',1, 'maxWidth',Inf, ...
 	'minDepth',1, 'maxDepth',Inf);
@@ -458,14 +461,16 @@ if volume
 		info.numBoxes = numel(bR1);
 		info.box = arrayfun(@flb3Geometry, bR1,bR2,bC1,bC2,bP1,bP2,bHt,bWd,bDp);
 		%
-		r0 = min(bR1);
-		c0 = min(bC1);
-		p0 = min(bP1);
-		unionMask = false(max(bR2)-r0+1, max(bC2)-c0+1, max(bP2)-p0+1);
-		for bi = 1:numel(bR1)
-			unionMask(bR1(bi)-r0+1:bR2(bi)-r0+1, bC1(bi)-c0+1:bC2(bi)-c0+1, bP1(bi)-p0+1:bP2(bi)-p0+1) = true;
+		if stpo.mkUnion
+			r0 = min(bR1);
+			c0 = min(bC1);
+			p0 = min(bP1);
+			unionMask = false(max(bR2)-r0+1, max(bC2)-c0+1, max(bP2)-p0+1);
+			for bi = 1:numel(bR1)
+				unionMask(bR1(bi)-r0+1:bR2(bi)-r0+1, bC1(bi)-c0+1:bC2(bi)-c0+1, bP1(bi)-p0+1:bP2(bi)-p0+1) = true;
+			end
+			info.unionVolume = nnz(unionMask);
 		end
-		info.unionVolume = nnz(unionMask);
 	end
 end
 %
@@ -549,6 +554,8 @@ for k = 1:numel(ofc)
 			flb3Scalar(@lt,60)
 		case 'display'
 			flb3String('silent','verbose','waitbar')
+		case 'mkUnion'
+			flb3Boolean()
 		otherwise
 			error('SC:findLargestBox3D:options:MissingCase','Please report this bug.')
 	end
@@ -557,6 +564,11 @@ end
 %
 %% Nested Functions %%
 %
+	function flb3Boolean() % logical.
+		assert(isequal(arg,0)||isequal(arg,1),...
+			sprintf('SC:findLargestBox3D:%s:NotLogical',dfn),...
+			'The <%s> value must be true or false.',dfn)
+	end
 	function flb3String(varargin) % text.
 		if ~(ischar(arg)&&ndims(arg)<3&&size(arg,1)==1&&any(strcmpi(arg,varargin))) %#ok<ISMAT>
 			tmp = sprintf(', "%s"',varargin{:});

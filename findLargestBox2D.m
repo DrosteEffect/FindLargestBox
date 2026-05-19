@@ -4,6 +4,7 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 % Finds the maximum-area axis-aligned rectangle within a 2D boolean mask
 % using a reasonably efficient O(rows*cols) histogram-based algorithm. The
 % mask uses TRUE/non-zero for usable pixels and FALSE/zero for unusable pixels.
+% Runtime depends on the bounding span, not on the number of true values.
 %
 %%% Syntax %%%
 %
@@ -83,6 +84,8 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 % ----------|----------------|---------------------------------------------
 % maxWidth  | 1<=maxW<=Inf** | The maximum rectangle width (# of columns).
 % ----------|----------------|---------------------------------------------
+% mkUnion   | true**         | Controls if <info> contains the union field.
+%           | false          | Calculating the union is memory intensive.
 %
 %% Input Arguments %%
 %
@@ -143,7 +146,7 @@ area = 0;
 %
 %% Default Option Values %%
 %
-stpo = struct(...
+stpo = struct('mkUnion',true,... Default option values
 	'display','silent', 'maxN',Inf, 'minArea',1, 'maxArea',Inf,...
 	'minHeight',1, 'maxHeight',Inf, 'minWidth',1, 'maxWidth',Inf);
 %
@@ -435,13 +438,15 @@ if area
 		info.numBoxes = numel(bestR1);
 		info.box = arrayfun(@flb2Geometry, bestR1,bestR2,bestC1,bestC2,bestHt,bestWd);
 		%
-		r0 = min(bestR1);
-		c0 = min(bestC1);
-		unionMask = false(max(bestR2)-r0+1, max(bestC2)-c0+1);
-		for bi = 1:numel(bestR1)
-			unionMask(bestR1(bi)-r0+1:bestR2(bi)-r0+1, bestC1(bi)-c0+1:bestC2(bi)-c0+1) = true;
+		if stpo.mkUnion
+			r0 = min(bestR1);
+			c0 = min(bestC1);
+			unionMask = false(max(bestR2)-r0+1, max(bestC2)-c0+1);
+			for bi = 1:numel(bestR1)
+				unionMask(bestR1(bi)-r0+1:bestR2(bi)-r0+1, bestC1(bi)-c0+1:bestC2(bi)-c0+1) = true;
+			end
+			info.unionArea = nnz(unionMask);
 		end
-		info.unionArea = nnz(unionMask);
 	end
 end
 %
@@ -523,6 +528,8 @@ for k = 1:numel(ofc)
 			flb2Scalar(@lt,60)
 		case 'display'
 			flb2String('silent','verbose','waitbar')
+		case 'mkUnion'
+			flb2Boolean()
 		otherwise
 			error('SC:findLargestBox2D:options:MissingCase','Please report this bug.')
 	end
@@ -531,6 +538,11 @@ end
 %
 %% Nested Functions %%
 %
+	function flb2Boolean() % logical.
+		assert(isequal(arg,0)||isequal(arg,1),...
+			sprintf('SC:findLargestBox2D:%s:NotLogical',dfn),...
+			'The <%s> value must be true or false.',dfn)
+	end
 	function flb2String(varargin) % text.
 		if ~(ischar(arg)&&ndims(arg)<3&&size(arg,1)==1&&any(strcmpi(arg,varargin))) %#ok<ISMAT>
 			tmp = sprintf(', "%s"',varargin{:});

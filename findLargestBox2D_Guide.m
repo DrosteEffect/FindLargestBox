@@ -151,7 +151,7 @@ findLargestBox2D(mask, opts)
 % If the mask contains no usable pixels, or if no rectangle satisfies the
 % active constraints, the function returns empty arrays for |bbox| and
 % |dims|, zero for |area|, and an |info| struct without |info.box| field:
-[bbox,dims,area] = findLargestBox2D(mask, 'minArea',99)
+[bbox,dims,area,info] = findLargestBox2D(mask, 'minArea',99)
 %% Performance Comparison Across Input Formats
 %
 % The three input formats (logical/numeric matrix, index vectors, sparse

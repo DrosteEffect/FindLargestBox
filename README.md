@@ -4,7 +4,7 @@ Two MATLAB functions for finding the largest axis-aligned rectangle (2D) or rect
 
 ## Overview ##
 
-These MATLAB functions solve the classic computational geometry problem of finding the largest axis-aligned 2D rectangles or 3D boxes within a boolean mask. The 2D version finds the maximum-area rectangles, while the 3D version finds the maximum-volume cuboids. Both functions use efficient algorithms with polynomial time complexity and are designed to be memory-conscious, supporting multiple input formats including logical matrices/arrays, numeric matrices/arrays, sparse matrices (2D only), and coordinate index vectors.
+These MATLAB functions solve the classic computational geometry problem of finding the largest axis-aligned boxes within a boolean mask. The 2D version finds the maximum-area rectangles, while the 3D version finds the maximum-volume cuboids. Both functions use efficient algorithms with polynomial time complexity and are designed to be memory-conscious, supporting multiple input formats including logical matrices/arrays, numeric matrices/arrays, sparse matrices (2D only), and coordinate index vectors.
 
 The [largest empty rectangle](https://en.wikipedia.org/wiki/Largest_empty_rectangle) problem has applications in VLSI design, computer graphics, image processing, robotics, architecture, data visualization, and manufacturing. The naive approach of checking every possible rectangle has exponential complexity, but these functions implement well-known efficient algorithms that find the globally optimal solution in polynomial time.
 
@@ -60,20 +60,21 @@ Finally, while the theoretical limit is 2^53 pixels or voxels (about 9 quadrilli
 
 Both functions accept the similar options, supplied either as a scalar structure or as comma-separated name-value pairs. Field names and string values are case-insensitive.
 
-| Field Name  | Default | Description                                      |
-|-------------|---------|--------------------------------------------------|
+| Field Name  | Default    | Description |
+|-------------|------------|-------------|
 | `display`   | `'silent'` | Feedback level: `'silent'`, `'verbose'`, or `'waitbar'` |
-| `maxN`      | `Inf`   | Maximum number of rectangles/cuboids to return   |
-| `minArea`   | `1`     | Minimum rectangle area in pixels (2D only)       |
-| `maxArea`   | `Inf`   | Maximum rectangle area in pixels (2D only)       |
-| `minVolume` | `1`     | Minimum cuboid volume in voxels (3D only)        |
-| `maxVolume` | `Inf`   | Maximum cuboid volume in voxels (3D only)        |
-| `minHeight` | `1`     | Minimum height in rows                           |
-| `maxHeight` | `Inf`   | Maximum height in rows                           |
-| `minWidth`  | `1`     | Minimum width in columns                         |
-| `maxWidth`  | `Inf`   | Maximum width in columns                         |
-| `minDepth`  | `1`     | Minimum depth in pages (3D only)                 |
-| `maxDepth`  | `Inf`   | Maximum depth in pages (3D only)                 |
+| `maxN`      | `Inf`      | Maximum number of rectangles/cuboids to return |
+| `minArea`   | `1`        | Minimum rectangle area in pixels (2D only) |
+| `maxArea`   | `Inf`      | Maximum rectangle area in pixels (2D only) |
+| `minVolume` | `1`        | Minimum cuboid volume in voxels (3D only) |
+| `maxVolume` | `Inf`      | Maximum cuboid volume in voxels (3D only) |
+| `minHeight` | `1`        | Minimum height in rows |
+| `maxHeight` | `Inf`      | Maximum height in rows |
+| `minWidth`  | `1`        | Minimum width in columns |
+| `maxWidth`  | `Inf`      | Maximum width in columns |
+| `minDepth`  | `1`        | Minimum depth in pages (3D only) |
+| `maxDepth`  | `Inf`      | Maximum depth in pages (3D only) |
+| `mkUnion`   | `true`     | 4th output `info` includes the area/volume union |
 
 ---
 
@@ -135,14 +136,14 @@ From `findLargestBox3D.m`:
 
 ### `findLargestBox2D` ###
 
-| Output | Size  | Description |
-|--------|-------|-------------|
-| `bbox` | N×4   | `[r1, r2, c1, c2]` — first and last row and column indices of each rectangle. Empty (`[]`) if none found. |
-| `dims` | N×2   | `[height, width]` — size of each rectangle in pixels. Empty (`[]`) if none found. |
-| `area` | scalar | Area of the largest rectangle(s), in pixels. Zero if none found. |
+| Output | Size   | Description |
+|--------|--------|-------------|
+| `bbox` | N×4    | `[r1, r2, c1, c2]` — first and last row and column indices of each rectangle. Empty (`[]`) if none found. |
+| `dims` | N×2    | `[height, width]` — size of each rectangle in pixels. Empty (`[]`) if none found. |
+| `area` | scalar | Area of the largest rectangle(s), in pixels. Zero (`0`) if none found. |
 | `info` | struct | Geometry and diagnostic information (see below). |
 
-The `info` structure contains:
+The `info` structure contains the following for each found rectangle:
 
 - `.box.indices`   — same as `bbox`
 - `.box.corners`   — pixel-edge coordinates `[r1-½, r2+½, c1-½, c2+½]`
@@ -152,22 +153,26 @@ The `info` structure contains:
 - `.box.area`      — same as `area`
 - `.box.perimeter` — perimeter length
 - `.box.diagonal`  — distance between the farthest corners
+
+as well as:
+
 - `.options`       — the option set used
 - `.inputFormat`   — `'matrix'`, `'sparse'`, or `'indices'`
 - `.rowsProcessed` — number of mask rows processed
 - `.numBoxes`      — number of rectangles found
+- `.unionArea`     — union of the areas of all returned rectangles
 - `.timeTotal`     — total execution time in seconds
 
 ### `findLargestBox3D` ###
 
-| Output   | Size  | Description |
-|----------|-------|-------------|
-| `bbox`   | N×6   | `[r1, r2, c1, c2, p1, p2]` — first and last row, column, and page indices of each cuboid. Empty (`[]`) if none found. |
-| `dims`   | N×3   | `[height, width, depth]` — size of each cuboid in voxels. Empty (`[]`) if none found. |
-| `volume` | scalar | Volume of the largest cuboid(s), in voxels. Zero if none found. |
+| Output   | Size   | Description |
+|----------|--------|-------------|
+| `bbox`   | N×6    | `[r1, r2, c1, c2, p1, p2]` — first and last row, column, and page indices of each cuboid. Empty (`[]`) if none found. |
+| `dims`   | N×3    | `[height, width, depth]` — size of each cuboid in voxels. Empty (`[]`) if none found. |
+| `volume` | scalar | Volume of the largest cuboid(s), in voxels. Zero (`0`) if none found. |
 | `info`   | struct | Geometry and diagnostic information (see below). |
 
-The `info` structure contains:
+The `info` structure contains the following for each returned cuboid:
 
 - `.box.indices`    — same as `bbox`
 - `.box.corners`    — voxel-edge coordinates `[r1-½, r2+½, c1-½, c2+½, p1-½, p2+½]`
@@ -178,11 +183,15 @@ The `info` structure contains:
 - `.box.volume`     — same as `volume`
 - `.box.area`       — total surface area of the cuboid
 - `.box.diagonal`   — distance between the farthest corners
+
+as well as:
+
 - `.options`        — the option set used
 - `.inputFormat`    — `'array'` or `'indices'`
 - `.slabDimension`  — dimension used for slab iteration (1, 2, or 3)
 - `.slabsProcessed` — total slab pairs processed
 - `.numBoxes`       — number of cuboids found
+- `.unionVolume`    — union of the areas of all returned rectangles
 - `.time2DFun`      — cumulative time spent in `findLargestBox2D`, in seconds
 - `.timeTotal`      — total execution time in seconds
 

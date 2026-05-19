@@ -154,7 +154,7 @@ findLargestBox3D(mask, opts)
 % If the mask contains no usable voxels, or if no cuboid satisfies the
 % active constraints, the function returns empty arrays for |bbox| and
 % |dims|, zero for |volume|, and an |info| struct without |info.box| field:
-[bbox,dims,volume] = findLargestBox3D(mask, 'minVolume',999)
+[bbox,dims,volume,info] = findLargestBox3D(mask, 'minVolume',999)
 %% Performance Comparison Across Input Formats
 %
 % The two input formats (logical/numeric array, index vectors) can differ

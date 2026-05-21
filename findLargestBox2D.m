@@ -338,7 +338,9 @@ for rr = minr:maxr
 								r1c = rr-popH+1+dR;
 								for dC = 0:(popW-effW)
 									c1c = popC+dC;
-									if numel(bestR1)>=stpo.maxN, break; end
+									if numel(bestR1)>=stpo.maxN
+										break
+									end
 									if ~any(bestR1==r1c & bestC1==c1c & bestHt==effH & bestWd==effW)
 										bestR1(end+1,1) = r1c; %#ok<AGROW>
 										bestC1(end+1,1) = c1c; %#ok<AGROW>
@@ -346,9 +348,13 @@ for rr = minr:maxr
 										bestWd(end+1,1) = effW; %#ok<AGROW>
 									end
 								end
-								if numel(bestR1)>=stpo.maxN, break; end
+								if numel(bestR1)>=stpo.maxN
+									break
+								end
 							end
-							if numel(bestR1)>=stpo.maxN, break; end
+							if numel(bestR1)>=stpo.maxN
+								break
+							end
 						end
 					end
 				end
@@ -402,7 +408,9 @@ for rr = minr:maxr
 							r1c = rr-popH+1+dR;
 							for dC = 0:(popW-effW)
 								c1c = popC+dC;
-								if numel(bestR1)>=stpo.maxN, break; end
+								if numel(bestR1)>=stpo.maxN
+									break
+								end
 								if ~any(bestR1==r1c & bestC1==c1c & bestHt==effH & bestWd==effW)
 									bestR1(end+1,1) = r1c; %#ok<AGROW>
 									bestC1(end+1,1) = c1c; %#ok<AGROW>
@@ -410,9 +418,13 @@ for rr = minr:maxr
 									bestWd(end+1,1) = effW; %#ok<AGROW>
 								end
 							end
-							if numel(bestR1)>=stpo.maxN, break; end
+							if numel(bestR1)>=stpo.maxN
+								break
+							end
 						end
-						if numel(bestR1)>=stpo.maxN, break; end
+						if numel(bestR1)>=stpo.maxN
+							break
+						end
 					end
 				end
 			end

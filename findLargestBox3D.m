@@ -345,7 +345,7 @@ for ii = 1:jszP
 				end
 				if isempty(slabIdx{kk})
 					slabCoords = []; % Empty slab means empty intersection
-					break;
+					break
 				end
 				%
 				idx = slabIdx{kk};

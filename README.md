@@ -45,14 +45,14 @@ Finally, while the theoretical limit is 2^53 pixels or voxels (about 9 quadrilli
 	bbox = findLargestBox2D(mask)
 	bbox = findLargestBox2D(pixR, pixC)
 	bbox = findLargestBox2D(..., <name-value options>)
-	[bbox, dims, area, info] = findLargestBox2D(...)
+	[bbox, dims, area, info, uniA] = findLargestBox2D(...)
 
 ### `findLargestBox3D` ###
 
 	bbox = findLargestBox3D(mask)
-	bbox = findLargestBox3D(vxR, vxC, vxP)
+	bbox = findLargestBox3D(voxR, voxC, voxP)
 	bbox = findLargestBox3D(..., <name-value options>)
-	[bbox, dims, volume, info] = findLargestBox3D(...)
+	[bbox, dims, volume, info, uniV] = findLargestBox3D(...)
 
 ---
 
@@ -62,7 +62,7 @@ Both functions accept the similar options, supplied either as a scalar structure
 
 | Field Name  | Default    | Description |
 |-------------|------------|-------------|
-| `display`   | `'silent'` | Feedback level: `'silent'`, `'verbose'`, or `'waitbar'` |
+| `display`   | `'silent'` | Feedback level: `'silent'`, `'summary'`, `'verbose'`, or `'waitbar'` |
 | `maxN`      | `Inf`      | Maximum number of rectangles/cuboids to return |
 | `minArea`   | `1`        | Minimum rectangle area in pixels (2D only) |
 | `maxArea`   | `Inf`      | Maximum rectangle area in pixels (2D only) |
@@ -74,7 +74,6 @@ Both functions accept the similar options, supplied either as a scalar structure
 | `maxWidth`  | `Inf`      | Maximum width in columns |
 | `minDepth`  | `1`        | Minimum depth in pages (3D only) |
 | `maxDepth`  | `Inf`      | Maximum depth in pages (3D only) |
-| `mkUnion`   | `true`     | 4th output `info` includes the area/volume union |
 
 ---
 
@@ -118,8 +117,8 @@ From `findLargestBox3D.m`:
 	dims = [3, 5, 4]
 	volume = 60
 
-	>> [vxR, vxC, vxP] = ind2sub(size(mask), find(mask));
-	>> [bbox, dims, volume] = findLargestBox3D(vxR, vxC, vxP)
+	>> [voxR, voxC, voxP] = ind2sub(size(mask), find(mask));
+	>> [bbox, dims, volume] = findLargestBox3D(voxR, voxC, voxP)
 	bbox = [3,5, 3,7, 3,6]
 	dims = [3, 5, 4]
 	volume = 60
@@ -138,62 +137,62 @@ From `findLargestBox3D.m`:
 
 | Output | Size   | Description |
 |--------|--------|-------------|
-| `bbox` | N×4    | `[r1, r2, c1, c2]` — first and last row and column indices of each rectangle. Empty (`[]`) if none found. |
-| `dims` | N×2    | `[height, width]` — size of each rectangle in pixels. Empty (`[]`) if none found. |
+| `bbox` | *N×4*  | `[r1, r2, c1, c2]` — first and last row and column indices of each rectangle. Empty (`[]`) if none found. |
+| `dims` | *N×2*  | `[height, width]` — size of each rectangle in pixels. Empty (`[]`) if none found. |
 | `area` | scalar | Area of the largest rectangle(s), in pixels. Zero (`0`) if none found. |
-| `info` | struct | Geometry and diagnostic information (see below). |
+| `info` | scalar | Struct of geometry and diagnostic information (see below). |
+| `uniA` | scalar | Area of the union of all found rectangles, taking overlaps into account. |
 
-The `info` structure contains the following for each found rectangle:
-
-- `.box.indices`   — same as `bbox`
-- `.box.corners`   — pixel-edge coordinates `[r1-½, r2+½, c1-½, c2+½]`
-- `.box.center`    — centroid coordinates
-- `.box.height`    — number of pixel rows
-- `.box.width`     — number of pixel columns
-- `.box.area`      — same as `area`
-- `.box.perimeter` — perimeter length
-- `.box.diagonal`  — distance between the farthest corners
-
-as well as:
+The `info` structure contains the following fields:
 
 - `.options`       — the option set used
 - `.inputFormat`   — `'matrix'`, `'sparse'`, or `'indices'`
 - `.rowsProcessed` — number of mask rows processed
 - `.numBoxes`      — number of rectangles found
-- `.unionArea`     — union of the areas of all returned rectangles
 - `.timeTotal`     — total execution time in seconds
+
+If any rectangles are found, then `info` also contains the the `box` field, an *Nx1* nested struct with information about each rectangle:
+
+- `.box(k).indices`   — same as `bbox`
+- `.box(k).corners`   — pixel-edge coordinates `[r1-½, r2+½, c1-½, c2+½]`
+- `.box(k).center`    — centroid coordinates
+- `.box(k).height`    — number of pixel rows
+- `.box(k).width`     — number of pixel columns
+- `.box(k).area`      — same as `area`
+- `.box(k).perimeter` — perimeter length
+- `.box(k).diagonal`  — distance between the farthest corners
 
 ### `findLargestBox3D` ###
 
 | Output   | Size   | Description |
 |----------|--------|-------------|
-| `bbox`   | N×6    | `[r1, r2, c1, c2, p1, p2]` — first and last row, column, and page indices of each cuboid. Empty (`[]`) if none found. |
-| `dims`   | N×3    | `[height, width, depth]` — size of each cuboid in voxels. Empty (`[]`) if none found. |
+| `bbox`   | *N×6*  | `[r1, r2, c1, c2, p1, p2]` — first and last row, column, and page indices of each cuboid. Empty (`[]`) if none found. |
+| `dims`   | *N×3*  | `[height, width, depth]` — size of each cuboid in voxels. Empty (`[]`) if none found. |
 | `volume` | scalar | Volume of the largest cuboid(s), in voxels. Zero (`0`) if none found. |
-| `info`   | struct | Geometry and diagnostic information (see below). |
+| `info`   | scalar | Struct of geometry and diagnostic information (see below). |
+| `uniV`   | scalar | Volume of the union of all found cuboids, taking overlaps into account.
 
-The `info` structure contains the following for each returned cuboid:
-
-- `.box.indices`    — same as `bbox`
-- `.box.corners`    — voxel-edge coordinates `[r1-½, r2+½, c1-½, c2+½, p1-½, p2+½]`
-- `.box.center`     — centroid coordinates
-- `.box.height`     — number of voxel rows
-- `.box.width`      — number of voxel columns
-- `.box.depth`      — number of voxel pages
-- `.box.volume`     — same as `volume`
-- `.box.area`       — total surface area of the cuboid
-- `.box.diagonal`   — distance between the farthest corners
-
-as well as:
+The `info` structure contains the following fields:
 
 - `.options`        — the option set used
 - `.inputFormat`    — `'array'` or `'indices'`
 - `.slabDimension`  — dimension used for slab iteration (1, 2, or 3)
 - `.slabsProcessed` — total slab pairs processed
 - `.numBoxes`       — number of cuboids found
-- `.unionVolume`    — union of the areas of all returned rectangles
 - `.time2DFun`      — cumulative time spent in `findLargestBox2D`, in seconds
 - `.timeTotal`      — total execution time in seconds
+
+If any cuboids are found, then `info` also contains the `box` field, an *Nx1* nested struct with information about each cuboid:
+
+- `.box(k).indices`    — same as `bbox`
+- `.box(k).corners`    — voxel-edge coordinates `[r1-½, r2+½, c1-½, c2+½, p1-½, p2+½]`
+- `.box(k).center`     — centroid coordinates
+- `.box(k).height`     — number of voxel rows
+- `.box(k).width`      — number of voxel columns
+- `.box(k).depth`      — number of voxel pages
+- `.box(k).volume`     — same as `volume`
+- `.box(k).area`       — total surface area of the cuboid
+- `.box(k).diagonal`   — distance between the farthest corners
 
 ---
 
@@ -201,6 +200,6 @@ as well as:
 
 The 2D function has O(rows × cols) time complexity, which is optimal since every cell must be examined. In practice, performance varies with data patterns, as masks with many consecutive usable cells benefit from better cache performance and fewer stack operations. For sparse or index-based inputs, only one row at a time is constructed in memory, providing significant memory savings.
 
-The 3D function has O(M × N²) complexity where N is the minimum dimension and M is the product of the other two. The automatic selection of the smallest dimension for iteration can noticeably impact performance. For a 100×200×50 mask, iterating along the smallest dimension (50) requires about 50 million operations, whereas iterating along the largest dimension (200) would require about 200 million operations — a 4-fold difference.
+The 3D function has O(M × N²) complexity where N is the minimum dimension and M is the product of the other two. The automatic selection of the smallest dimension for iteration can noticeably impact performance. For a 100×200×50 mask, iterating along the smallest dimension (50) requires about 50 million operations, whereas iterating along the largest dimension (200) would require about 200 million operations (a 4-fold difference).
 
 Memory usage is carefully optimised in both functions. The 2D function requires only O(cols) working memory regardless of input format. The 3D function stores one 2D slab whose size is determined by the two largest dimensions when using array input, or performs coordinate set operations without creating full masks when using index input. For very large sparse datasets, index input can reduce memory requirements by orders of magnitude.

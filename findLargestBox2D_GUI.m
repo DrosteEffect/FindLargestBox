@@ -301,7 +301,7 @@ try %#ok<TRYNC>
 end
 %
 uip1.AutoResizeChildren = 'off';
-uip1.SizeChangedFcn = @(~,~)set([ax0,axh],'Position',[0,0,1,1], 'Units','normalized');
+uip1.SizeChangedFcn = @(~,~)set([ax0,axh], 'Position',[0,0,1,1], 'Units','normalized');
 %
 % Shared image — content is populated via fnhSetVals -> flb2UpdateDimensions
 imh = imagesc(axh, false(max(1,szY),max(1,szX)), 'ButtonDownFcn',@flb2ClickClBk);

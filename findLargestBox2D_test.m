@@ -113,11 +113,6 @@ chk.i(M).o([1,1,5,5;2,2,4,4;3,3,3,3;4,4,2,2;5,5,1,1],[1,1;1,1;1,1;1,1;1,1],1)
 %
 %% maxArea Candidate-Set Bug %%
 %
-% A 10x5 all-true block. With maxArea=24, the constrained optimum is
-% 6x4=24 (eH=6, eW=floor(24/6)=4). However, Hcands = unique([Hmax=10;
-% floor(24/Wmax)=floor(24/5)=4; sqM=4; sqM+1=5]) = [4,5,10], which
-% does NOT include eH=6. The buggy code finds effA=20 (from 4x5 or 5x4)
-% and returns bbox=[1,4,1,5], dims=[4,5], area=20.
 % The correct answer is bbox=[1,6,1,4], dims=[6,4], area=24.
 M = true(10,5);
 chk.i(M,'maxArea',24,'maxN',1).o([1,6,1,4],[6,4],24)
@@ -250,14 +245,14 @@ chk.i(M).o([1,2,2,4],[2,3],6)
 % Increasing histogram
 M = false(6,6);
 for k = 1:6
-    M(7-k:6,k) = true;
+	M(7-k:6,k) = true;
 end
 chk.i(M).o([3,6,4,6;4,6,3,6],[4,3;3,4],12)
 %
 % Decreasing histogram
 M = false(6,6);
 for k = 1:6
-    M(1:k,k) = true;
+	M(1:k,k) = true;
 end
 chk.i(M).o([1,3,3,6;1,4,4,6],[3,4;4,3],12)
 %
@@ -279,14 +274,14 @@ chk.i(M).o([4,7,4,9],[4,6],24)
 % Many small rectangles vs one large
 M = false(10,10);
 for k = 1:2:9
-    M(k,k) = true;  % 1x1 rectangles
+	M(k,k) = true;  % 1x1 rectangles
 end
 M(3:7,3:7) = true;  % 5x5 = 25
 chk.i(M).o([3,7,3,7],[5,5],25)
 %
 %% Staircase Patterns %%
 %
-% Asending staircase
+% Ascending staircase
 M = [1,1,1,0,0; 0,1,1,1,0; 0,0,1,1,1; 0,0,0,1,1];
 chk.i(M).o([1,2,2,3;2,3,3,4;3,4,4,5],[2,2;2,2;2,2],4)
 %
@@ -318,9 +313,9 @@ chk.i(M).o([1,1,1,1;1,1,3,3;2,2,2,2;2,2,4,4;3,3,1,1;3,3,3,3;4,4,2,2;4,4,4,4],[1,
 % Checkerboard with 2x2 squares (actually fills entire matrix)
 M = false(8,8);
 for i = 1:2:8
-    for j = 1:2:8
-        M(i:i+1,j:j+1) = true;
-    end
+	for j = 1:2:8
+		M(i:i+1,j:j+1) = true;
+	end
 end
 chk.i(M).o([1,8,1,8],[8,8],64)
 %
@@ -421,18 +416,18 @@ chk.i(M).o([1,2,1,13;1,13,1,2;1,13,12,13;12,13,1,13],[2,13;13,2;13,2;2,13],26)
 % Diagonal band
 M = false(10,10);
 for k = 1:10
-    if k <= 7
-        M(k,k:k+3) = true;
-    end
+	if k <= 7
+		M(k,k:k+3) = true;
+	end
 end
 chk.i(M).o([1,2,2,4;1,3,3,4;2,3,3,5;2,4,4,5;3,4,4,6;3,5,5,6;4,5,5,7;4,6,6,7;5,6,6,8;5,7,7,8;6,7,7,9],[2,3;3,2;2,3;3,2;2,3;3,2;2,3;3,2;2,3;3,2;2,3],6)
 %
 % Anti-diagonal band
 M = false(10,10);
 for k = 1:10
-    if k <= 7
-        M(k,11-k-3:11-k) = true;
-    end
+	if k <= 7
+		M(k,11-k-3:11-k) = true;
+	end
 end
 chk.i(M).o([1,2,7,9;1,3,7,8;2,3,6,8;2,4,6,7;3,4,5,7;3,5,5,6;4,5,4,6;4,6,4,5;5,6,3,5;5,7,3,4;6,7,2,4],[2,3;3,2;2,3;3,2;2,3;3,2;2,3;3,2;2,3;3,2;2,3],6)
 %

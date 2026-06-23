@@ -15,7 +15,7 @@
 %
 % |findLargestBox2D| accepts a 2D logical or numeric matrix where
 % |TRUE|/non-zero indicates usable pixels and |FALSE|/zero indicates
-% blocked pixels. It returns the bounding box of the largest rectangle
+% blocked pixels. It returns the bounding boxes of the largest rectangles
 % consisting entirely of |TRUE|/non-zero pixels.
 mask = false(9,9);
 mask(2:3, 2:5) = true; % 2x4 = 8
@@ -23,14 +23,13 @@ bbox = findLargestBox2D(mask)
 %% Output 1: |bbox| -- Bounding Box Indices
 %
 % The first output |bbox| is an *Nx4* matrix with one row per rectangle
-% found. Its columns are |[r1, r2, c1, c2]|:
+% found. Its columns are |[r1, r2, c1, c2]|, where:
 %
 % * |r1|, |r2| -- the first and last *row* indices of the rectangle.
 % * |c1|, |c2| -- the first and last *column* indices of the rectangle.
 %
 % The rectangle spans pixels |(r1,c1)| to |(r2,c2)| inclusive.
-% When only one rectangle is found |bbox| is a 1x4 row vector.
-mask(3:5, 3:7) = true; % 3x5 = 15
+mask(3:6, 5:6) = true; % 4x2 = 8
 bbox = findLargestBox2D(mask)
 %% Output 2: |dims| -- Rectangle Dimensions
 %
@@ -47,28 +46,32 @@ bbox = findLargestBox2D(mask)
 % The fourth output |info| is a structure that captures geometry and
 % execution metadata. It contains the following fields:
 %
-% * |info.options|        -- the resolved option values used.
-% * |info.numBoxes|       -- the number of rectangles returned.
-% * |info.inputFormat|    -- 'matrix', 'indices', or 'sparse'.
-% * |info.rowsProcessed|  -- number of mask rows visited.
-% * |info.unionArea|      -- the union area of all returned rectangles.
-% * |info.timeTotal|      -- total execution time in seconds.
+% * |.options|        -- the resolved option values used.
+% * |.numBoxes|       -- the number of rectangles returned.
+% * |.inputFormat|    -- 'matrix', 'indices', or 'sparse'.
+% * |.rowsProcessed|  -- number of mask rows visited.
+% * |.timeTotal|      -- total execution time in seconds.
 %
 % When at least one rectangle is found, |info| contains the nested
-% structure array |.box| with size Nx1, which has the following fields:
+% structure array |.box| with size *Nx1*, which has the following fields:
 %
-% * |info.box.indices|   -- |[r1,r2,c1,c2]| (same as one row of |bbox|).
-% * |info.box.corners|   -- fractional pixel-edge coordinates
-%                           |[r1-0.5,r2+0.5,c1-0.5,c2+0.5]|.
-% * |info.box.diagonal|  -- the diagonal length (may be fractional).
-% * |info.box.center|    -- where the diagonals meet (may be fractional).
-% * |info.box.height|    -- the height in pixels.
-% * |info.box.width|     -- the width in pixels.
-% * |info.box.area|      -- the area in pixels.
-% * |info.box.perimeter| -- the perimeter length in pixels.
+% * |.box(k).indices|   -- |[r1,r2,c1,c2]| (same as one row of |bbox|).
+% * |.box(k).corners|   -- fractional pixel-edge coordinates
+%                              |[r1-0.5,r2+0.5,c1-0.5,c2+0.5]|.
+% * |.box(k).diagonal|  -- the diagonal length (may be fractional).
+% * |.box(k).center|    -- where the diagonals meet (may be fractional).
+% * |.box(k).height|    -- the height in pixels.
+% * |.box(k).width|     -- the width in pixels.
+% * |.box(k).area|      -- the area in pixels.
+% * |.box(k).perimeter| -- the perimeter length in pixels.
 %
 [~,~,~,info] = findLargestBox2D(mask)
-info.box
+info.box(1)
+%% Output 5: |uniA| -- Union of Rectangle Areas
+%
+% The union of the pixels, i.e. the total area taking overlaps into account.
+% Calculating the union is memory intensive (it generates a full array).
+[~,~,~,~,uniA] = findLargestBox2D(mask)
 %% Input 1: Sparse Matrix
 %
 % For very large but sparsely populated grids, pass a sparse matrix.
@@ -83,12 +86,12 @@ mask(1000:1010, 2000:2050) = 1; % 11x51 = 561
 % Instead of a full matrix, you can supply two vectors of row and column
 % indices of the usable pixels. This is convenient when working with the
 % output of |find| and avoids constructing a large dense matrix.
-% All four output arguments are identical to the matrix-input form:
+% All output arguments are identical to the matrix-input form:
 [pixR, pixC] = find(mask);
 [bbox,dims,area] = findLargestBox2D(pixR, pixC)
 %% Multiple Rectangles of Equal Largest Area
 %
-% When multiple rectangles have the same largest area then by default 
+% When multiple rectangles have the same largest area then by default
 % all *N* of them are returned. These rectangles may *overlap*!
 % Output |bbox| will then have size *Nx4* (one row per rectangle), and
 % |info.box| will be an *Nx1* struct array (one element per rectangle).
@@ -132,11 +135,12 @@ findLargestBox2D(mask, 'maxWidth',3)
 findLargestBox2D(mask, 'minWidth',6)
 %% Option |display| -- Show Function Progress
 %
-% The |'display'| option accepts one of the following three values:
+% The |'display'| option accepts one of the following values:
 %
 % * |'silent'| : no progress display.
 % * |'waitbar'|: MATLAB progress bar, with estimated time remaining (ETR).
-% * |'verbose'|: prints progress in the command window, with ETR.
+% * |'verbose'|: prints all progress in the command window, with ETR.
+% * |'summary'|: prints the main steps in the command window.
 %
 %% Options as a Struct
 %

@@ -1,4 +1,4 @@
-function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
+function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
 % Find the largest axis-aligned rectangle in a 2D boolean mask.
 %
 % Finds the maximum-area axis-aligned rectangle within a 2D boolean mask
@@ -11,7 +11,7 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 %   bbox = findLargestBox2D(mask)
 %   bbox = findLargestBox2D(pixR,pixC)
 %   bbox = findLargestBox2D(...,<name-value options>)
-%   [bbox,dims,area,info] = findLargestBox2D(...)
+%   [bbox,dims,area,info,uniA] = findLargestBox2D(...)
 %
 %% Algorithm %%
 %
@@ -67,7 +67,8 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 % Name:     | Values:        | Description (example):
 % ==========|================|=============================================
 % display   | 'silent'**     | No feedback displayed.
-%           | 'verbose'      | Print progress in the command window.
+%           | 'summary'      | Print the main steps in the command window.
+%           | 'verbose'      | Print all progress in the command window.
 %           | 'waitbar'      | Progress bar with estimated time remaining.
 % ----------|----------------|---------------------------------------------
 % maxN      | 1<=maxN<=Inf** | The maximum number of rectangles to return.
@@ -84,8 +85,6 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 % ----------|----------------|---------------------------------------------
 % maxWidth  | 1<=maxW<=Inf** | The maximum rectangle width (# of columns).
 % ----------|----------------|---------------------------------------------
-% mkUnion   | true**         | Controls if <info> contains the union field.
-%           | false          | Calculating the union is memory intensive.
 %
 %% Input Arguments %%
 %
@@ -107,22 +106,23 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 %          h,w = the height and width of the rectangle(s), in pixels.
 %          If no rectangle is found then dims=[].
 %   area = Numeric scalar, the area of the rectangle(s), in pixels.
-%   info = Structure with geometry information (if one or more rectangles):
-%          .box.area      : same as output <area>
-%          .box.indices   : same as output <bbox>
-%          .box.corners   : [r1-1/2,r2+1/2,c1-1/2,c2+1/2]
-%          .box.diagonal  : distance between farthest corners
-%          .box.center    : where the diagonals meet
-%          .box.height    : number of pixel rows
-%          .box.width     : number of pixel columns
-%          .box.perimeter : perimeter length
+%   info = Structure with geometry information about the k-th rectangle:
+%          .box(k).area      : same as output <area>
+%          .box(k).indices   : same as output <bbox>
+%          .box(k).corners   : [r1-1/2,r2+1/2,c1-1/2,c2+1/2]
+%          .box(k).diagonal  : distance between farthest corners
+%          .box(k).center    : where the diagonals meet
+%          .box(k).height    : number of pixel rows
+%          .box(k).width     : number of pixel columns
+%          .box(k).perimeter : perimeter length
 %          and some useful information about the function/algorithm:
 %          .options       : the used option set
 %          .inputFormat   : 'indices', 'matrix', or 'sparse'
 %          .rowsProcessed : number of mask rows processed
 %          .numBoxes      : number of rectangles found
-%          .unionArea     : union of the areas of all returned rectangles
 %          .timeTotal     : total execution time in seconds
+%   uniA = the union of the areas of all returned rectangles. Calculating
+%          the union is memory intensive (it generates a full array).
 %
 %% Dependencies %%
 %
@@ -133,6 +133,7 @@ function [bbox,dims,area,info] = findLargestBox2D(mask,varargin)
 tic0 = tic();
 bbox = [];
 dims = [];
+uniA = 0;
 area = 0;
 % Release | Feature
 % --------|--------
@@ -146,7 +147,7 @@ area = 0;
 %
 %% Default Option Values %%
 %
-stpo = struct('mkUnion',true,... Default option values
+stpo = struct(... Default option values
 	'display','silent', 'maxN',Inf, 'minArea',1, 'maxArea',Inf,...
 	'minHeight',1, 'maxHeight',Inf, 'minWidth',1, 'maxWidth',Inf);
 %
@@ -166,7 +167,7 @@ elseif numel(arg) && isstruct(arg{end}) % options in a struct
 	varargin(end) = [];
 end
 %
-info = struct('options',stpo, 'rowsProcessed',0, 'numBoxes',0, 'unionArea',0);
+info = struct('options',stpo, 'rowsProcessed',0, 'numBoxes',0);
 %
 assert(stpo.minArea<=stpo.maxArea,...
 	'SC:findLargestBox2D:options:InvertedAreaValues',...
@@ -237,21 +238,22 @@ elseif isrc % sparse or indices
 	rIdx = accumarray(pixR,pixC,[maxr,1], @(x){x}, {[]});
 end
 %
-assert((maxr*maxc)<=9007199254740992,... flintmax('double') = 2^53
-	'SC:findLargestBox2D:areaTooLarge',...
+assert((maxr*maxc)<=9007199254740992, ...flintmax('double') = 2^53
+	'SC:findLargestBox2D:areaTooLarge', ...
 	'Index area (%dx%d) exceeds 2^53, use smaller dimensions.',maxr,maxc);
 %
-isvb = strcmpi(stpo.display,'verbose');
-iswb = strcmpi(stpo.display,'waitbar');
-if isvb || iswb
+wsvs = strcmpi(stpo.display,'verbose') + ...-1:progress 1:verbose 2:summary
+	2*strcmpi(stpo.display,'summary') - strcmpi(stpo.display,'waitbar');
+%
+if wsvs
 	mfnm = mfilename();
 	rItr = 1+maxr-minr;
 	cItr = 1+maxc-minc;
 	tItr = rItr*cItr;
-	if isvb
+	if wsvs>0
 		fprintf('%s:  Starting ...\n',mfnm);
 	end
-	if iswb
+	if wsvs<0
 		wBar = waitbar(0,'Starting ...', 'Name',mfnm);
 	end
 end
@@ -285,14 +287,14 @@ for rr = minr:maxr
 	%
 	for cc = minc:maxc
 		%
-		if isvb || iswb
+		if abs(wsvs)==1
 			nItr = (cc-minc) + (rr-minr) * cItr;
-			tETR = flb2TimeText(ceil(toc(tic0)*(tItr-nItr)./nItr));
-			tTmp = sprintf('%d of %d    %s',nItr+1,tItr,tETR);
-			if isvb
-				fprintf('%s:  %s\n',mfnm, tTmp);
+			tETR = flb2TimeText(toc(tic0)*(tItr-nItr)./nItr);
+			tTmp = sprintf('%d of %d    ETR: %s', nItr+1, tItr, tETR);
+			if wsvs>0
+				fprintf('%s:  %s\n', mfnm, tTmp);
 			end
-			if iswb
+			if wsvs<0
 				waitbar(nItr./tItr, wBar, tTmp);
 			end
 		end
@@ -310,10 +312,10 @@ for rr = minr:maxr
 			Wmax = min(popW, stpo.maxWidth);
 			effA = 0;
 			for eH = stpo.minHeight:Hmax
-    			eW = min(Wmax, floor(stpo.maxArea/eH));
-    			if eW >= stpo.minWidth && eH*eW > effA
-        			effA = eH*eW;
-    			end
+				eW = min(Wmax, floor(stpo.maxArea/eH));
+				if eW >= stpo.minWidth && eH*eW > effA
+					effA = eH*eW;
+				end
 			end
 			% Collect ALL (eH,eW) shape pairs that achieve effA
 			if effA >= stpo.minArea
@@ -432,38 +434,46 @@ for rr = minr:maxr
 	end
 end
 %
-if isvb
-	fprintf('%s:  completed\n',mfnm)
-end
-if iswb
-	delete(wBar)
-end
-%
 %% Outputs %%
+%
+if wsvs>0
+	fprintf('%s:  Generating outputs...\n', mfnm);
+end
+if wsvs<0
+	waitbar(1, wBar, 'Generating outputs...');
+end
 %
 if area
 	bestR2 = bestR1 + bestHt - 1;
 	bestC2 = bestC1 + bestWd - 1;
 	bbox = [bestR1,bestR2,bestC1,bestC2];
 	dims = [bestHt,bestWd];
+	%
 	if nargout>3
 		info.numBoxes = numel(bestR1);
 		info.box = arrayfun(@flb2Geometry, bestR1,bestR2,bestC1,bestC2,bestHt,bestWd);
 		%
-		if stpo.mkUnion
+		if nargout>4
 			r0 = min(bestR1);
 			c0 = min(bestC1);
 			unionMask = false(max(bestR2)-r0+1, max(bestC2)-c0+1);
 			for bi = 1:numel(bestR1)
 				unionMask(bestR1(bi)-r0+1:bestR2(bi)-r0+1, bestC1(bi)-c0+1:bestC2(bi)-c0+1) = true;
 			end
-			info.unionArea = nnz(unionMask);
+			uniA = nnz(unionMask);
 		end
 	end
 end
 %
 info.rowsProcessed = rowCnt;
 info.timeTotal = toc(tic0);
+%
+if wsvs>0
+	fprintf('%s:  Completed in %s\n', mfnm, flb2TimeText(info.timeTotal))
+end
+if wsvs<0
+	delete(wBar)
+end
 %
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D
@@ -539,9 +549,7 @@ for k = 1:numel(ofc)
 		case {'minArea','minHeight','minWidth'}
 			flb2Scalar(@lt,60)
 		case 'display'
-			flb2String('silent','verbose','waitbar')
-		case 'mkUnion'
-			flb2Boolean()
+			flb2String('silent','summary','verbose','waitbar')
 		otherwise
 			error('SC:findLargestBox2D:options:MissingCase','Please report this bug.')
 	end
@@ -550,11 +558,6 @@ end
 %
 %% Nested Functions %%
 %
-	function flb2Boolean() % logical.
-		assert(isequal(arg,0)||isequal(arg,1),...
-			sprintf('SC:findLargestBox2D:%s:NotLogical',dfn),...
-			'The <%s> value must be true or false.',dfn)
-	end
 	function flb2String(varargin) % text.
 		if ~(ischar(arg)&&ndims(arg)<3&&size(arg,1)==1&&any(strcmpi(arg,varargin))) %#ok<ISMAT>
 			tmp = sprintf(', "%s"',varargin{:});

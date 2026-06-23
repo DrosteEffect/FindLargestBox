@@ -1,4 +1,4 @@
-function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
+function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 % Find the largest empty axis-aligned box in a 3D boolean mask.
 %
 % Finds the maximum-volume axis-aligned rectangular cuboid within a 3D
@@ -10,9 +10,9 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 %%% Syntax %%%
 %
 %   bbox = findLargestBox3D(mask)
-%   bbox = findLargestBox3D(vxR,vxC,vxP)
+%   bbox = findLargestBox3D(voxR,voxC,voxP)
 %   bbox = findLargestBox3D(...,<name-value options>)
-%   [bbox,dims,volume,info] = findLargestBox3D(...)
+%   [bbox,dims,volume,info,uniV] = findLargestBox3D(...)
 %
 %% Algorithm %%
 %
@@ -43,8 +43,8 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 %   dims = [3,5,4]
 %   volume = 60
 %
-%   >> [vxR,vxC,vxP] = ind2sub(size(mask), find(mask));
-%   >> [bbox, dims, volume] = findLargestBox3D(vxR,vxC,vxP)
+%   >> [voxR,voxC,voxP] = ind2sub(size(mask), find(mask));
+%   >> [bbox, dims, volume] = findLargestBox3D(voxR,voxC,voxP)
 %   bbox = [3,5, 3,7, 3,6]
 %   dims = [3,5,4]
 %   volume = 60
@@ -68,7 +68,8 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 % Name:     | Values:        | Description (example):
 % ==========|================|=============================================
 % display   | 'silent'**     | No feedback displayed.
-%           | 'verbose'      | Print progress in the command window.
+%           | 'summary'      | Print the main steps in the command window.
+%           | 'verbose'      | Print all progress in the command window.
 %           | 'waitbar'      | Progress bar with estimated time remaining.
 % ----------|----------------|---------------------------------------------
 % maxN      | 1<=maxN<=Inf** | The maximum number of cuboids to return.
@@ -89,17 +90,15 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 % ----------|----------------|---------------------------------------------
 % maxDepth  | 1<=maxD<=Inf** | The maximum cuboid depth (# of pages).
 % ----------|----------------|---------------------------------------------
-% mkUnion   | true**         | Controls if <info> contains the union field.
-%           | false          | Calculating the union is memory intensive.
 %
 %% Input Arguments %%
 %
 %   mask = 3D logical or numeric array where:
 %          TRUE / non-zero == empty/usable voxel
 %          FALSE / zero    == blocked/unusable voxel
-%   vxR  = NumericVector of M usable voxel row indices.
-%   vxC  = NumericVector of M usable voxel column indices.
-%   vxP  = NumericVector of M usable voxel page indices.
+%   voxR = NumericVector of M usable voxel row indices.
+%   voxC = NumericVector of M usable voxel column indices.
+%   voxP = NumericVector of M usable voxel page indices.
 %   <name-value> optional arguments as per the "Options" table above.
 %
 %% Output Arguments %%
@@ -114,25 +113,26 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 %          h,w,d = the height, width, & depth of the cuboid(s), in voxels.
 %          If no cuboid is found then dims=[].
 %   volume = Numeric scalar, the volume of the largest cuboid, in voxels.
-%   info = Structure with geometry information (if one or more cuboids):
-%          .box.indices   : same as output <bbox>
-%          .box.volume    : same as output <volume>
-%          .box.corners   : [r1-1/2,r2+1/2, c1-1/2,c2+1/2, p1-1/2,p2+1/2]
-%          .box.diagonal  : distance between farthest corners
-%          .box.center    : where the diagonals meet
-%          .box.height    : number of voxel rows
-%          .box.width     : number of voxel columns
-%          .box.depth     : number of voxel pages
-%          .box.area      : total surface area
+%   info = Structure with geometry information about the k-th cuboid:
+%          .box(k).indices   : same as output <bbox>
+%          .box(k).volume    : same as output <volume>
+%          .box(k).corners   : [r1-1/2,r2+1/2, c1-1/2,c2+1/2, p1-1/2,p2+1/2]
+%          .box(k).diagonal  : distance between farthest corners
+%          .box(k).center    : where the diagonals meet
+%          .box(k).height    : number of voxel rows
+%          .box(k).width     : number of voxel columns
+%          .box(k).depth     : number of voxel pages
+%          .box(k).area      : total surface area
 %          and some useful information about the function/algorithm:
 %          .options       : the used option set
 %          .inputFormat   : 'array' or 'indices'
 %          .slabDimension : dimension used for slab iteration (1, 2, or 3)
 %          .slabsProcessed: total slab pairs processed
 %          .numBoxes      : number of cuboids found
-%          .unionVolume   : union of the volumes of all returned cuboids
 %          .timeTotal     : total execution time in seconds
 %          .time2DFun     : 2D function execution time in seconds
+%   uniV = the union of the volumes of all returned cuboids. Calculating
+%          the union is memory intensive (it generates a full array).
 %
 %% Dependencies %%
 %
@@ -144,6 +144,7 @@ function [bbox,dims,volume,info] = findLargestBox3D(mask,varargin)
 tic0 = tic();
 bbox = [];
 dims = [];
+uniV = 0;
 volume = 0;
 time2D = 0;
 % Release | Feature
@@ -158,7 +159,7 @@ time2D = 0;
 %
 %% Default Options %%
 %
-stpo = struct('mkUnion',true,... Default option values
+stpo = struct(... Default option values
 	'display','silent', 'maxN',Inf, 'minVolume',1, 'maxVolume',Inf, ...
 	'minHeight',1, 'maxHeight',Inf, 'minWidth',1, 'maxWidth',Inf, ...
 	'minDepth',1, 'maxDepth',Inf);
@@ -178,7 +179,7 @@ elseif numel(arg) && isstruct(arg{end}) % options in a struct
 	varargin(end) = [];
 end
 %
-info = struct('options',stpo, 'slabsProcessed',0, 'numBoxes',0, 'unionVolume',0);
+info = struct('options',stpo, 'slabsProcessed',0, 'numBoxes',0);
 %
 assert(stpo.minVolume<=stpo.maxVolume,...
 	'SC:findLargestBox3D:options:InvertedVolumeValues',...
@@ -214,13 +215,13 @@ switch numel(varargin)
 	case 2
 		info.inputFormat = 'indices';
 		isx = true;
-		vxR = flb3CheckIndex('1st','vxR',mask);
-		vxC = flb3CheckIndex('2nd','vxC',varargin{1});
-		vxP = flb3CheckIndex('3rd','vxP',varargin{2});
-		assert(isequal(numel(vxR),numel(vxC),numel(vxP)),...
+		voxR = flb3CheckIndex('1st','voxR',mask);
+		voxC = flb3CheckIndex('2nd','voxC',varargin{1});
+		voxP = flb3CheckIndex('3rd','voxP',varargin{2});
+		assert(isequal(numel(voxR),numel(voxC),numel(voxP)),...
 			'SC:findLargestBox3D:indices:differentLengths',...
-			'Inputs <vxR>, <vxC>, & <vxP> must have the same length')
-		iszV = [max(vxR), max(vxC), max(vxP)];
+			'Inputs <voxR>, <voxC>, & <voxP> must have the same length')
+		iszV = [max(voxR), max(voxC), max(voxP)];
 	otherwise
 		error('SC:findLargestBox3D:unsupportedInputs',...
 			'Either one 3D array (mask) or three index vectors are supported')
@@ -259,7 +260,7 @@ jszP = jszV(3);
 % For index inputs, organize voxels by slab
 if isx
 	% Determine which original coordinate corresponds to slab dimension
-	vxAll = {vxR, vxC, vxP};
+	vxAll = {voxR, voxC, voxP};
 	vxDim1 = vxAll{idmPerm(1)}; % First dimension in 2D slice
 	vxDim2 = vxAll{idmPerm(2)}; % Second dimension in 2D slice
 	vxSlab = vxAll{idmPerm(3)}; % The dimension to iterate through
@@ -271,15 +272,16 @@ end
 %
 %% Display Setup %%
 %
-isvb = strcmpi(stpo.display,'verbose');
-iswb = strcmpi(stpo.display,'waitbar');
-if isvb || iswb
+wsvs = strcmpi(stpo.display,'verbose') + ...-1:progress 1:verbose 2:summary
+	2*strcmpi(stpo.display,'summary') - strcmpi(stpo.display,'waitbar');
+%
+if wsvs
 	mfnm = mfilename();
 	tItr = jszP * (jszP + 1) / 2;
-	if isvb
+	if wsvs>0
 		fprintf('%s:  Starting ...\n',mfnm)
 	end
-	if iswb
+	if wsvs<0
 		wBar = waitbar(0,'Starting ...','Name',mfnm);
 	end
 end
@@ -295,12 +297,9 @@ tempMax = [stpo.maxHeight, stpo.maxWidth, stpo.maxDepth];
 slabMin = tempMin(idmPerm(3));
 slabMax = tempMax(idmPerm(3));
 %
-opts2D = struct('display','silent', 'maxN',Inf,...
-    'minHeight',tempMin(idmPerm(1)), 'maxHeight',tempMax(idmPerm(1)),...
-    'minWidth', tempMin(idmPerm(2)), 'maxWidth', tempMax(idmPerm(2)));
-if stpo.maxN<2
-	opts2D.maxN = 1;
-end
+opts2D = struct('display','silent', 'maxN',stpo.maxN,...
+	'minHeight',tempMin(idmPerm(1)), 'maxHeight',tempMax(idmPerm(1)),...
+	'minWidth', tempMin(idmPerm(2)), 'maxWidth', tempMax(idmPerm(2)));
 %
 for ii = 1:jszP
 	%
@@ -315,14 +314,14 @@ for ii = 1:jszP
 		slabCnt = slabCnt + 1;
 		thickness = jj - ii + 1;
 		%
-		if isvb || iswb
+		if abs(wsvs)==1
 			nItr = (ii-1) * (2*jszP - ii + 2) / 2 + (jj - ii + 1);
-			tETR = flb3TimeText(ceil(toc(tic0)*(tItr-nItr)./nItr));
-			tTmp = sprintf('%d of %d    %s',nItr+1,tItr,tETR);
-			if isvb
-				fprintf('%s:  %s\n',mfnm,tTmp)
+			tETR = flb3TimeText(toc(tic0)*(tItr-nItr)./nItr);
+			tTmp = sprintf('%d of %d    ETR: %s', nItr+1, tItr, tETR);
+			if wsvs>0
+				fprintf('%s:  %s\n',mfnm, tTmp)
 			end
-			if iswb
+			if wsvs<0
 				waitbar(nItr./tItr, wBar, tTmp)
 			end
 		end
@@ -432,14 +431,14 @@ for ii = 1:jszP
 	%
 end
 %
-if isvb
-	fprintf('%s:  completed\n',mfnm)
-end
-if iswb
-	delete(wBar)
-end
-%
 %% Outputs %%
+%
+if wsvs>0
+	fprintf('%s:  Generating outputs...\n', mfnm);
+end
+if wsvs<0
+	waitbar(1, wBar, 'Generating outputs...');
+end
 %
 volume = bestVol;
 %
@@ -457,11 +456,12 @@ if volume
 	bWd = bC2-bC1+1;
 	bDp = bP2-bP1+1;
 	dims = [bHt,bWd,bDp];
+	%
 	if nargout>3
 		info.numBoxes = numel(bR1);
 		info.box = arrayfun(@flb3Geometry, bR1,bR2,bC1,bC2,bP1,bP2,bHt,bWd,bDp);
 		%
-		if stpo.mkUnion
+		if nargout>4
 			r0 = min(bR1);
 			c0 = min(bC1);
 			p0 = min(bP1);
@@ -469,7 +469,7 @@ if volume
 			for bi = 1:numel(bR1)
 				unionMask(bR1(bi)-r0+1:bR2(bi)-r0+1, bC1(bi)-c0+1:bC2(bi)-c0+1, bP1(bi)-p0+1:bP2(bi)-p0+1) = true;
 			end
-			info.unionVolume = nnz(unionMask);
+			uniV = nnz(unionMask);
 		end
 	end
 end
@@ -477,6 +477,13 @@ end
 info.slabsProcessed = slabCnt;
 info.time2DFun = time2D;
 info.timeTotal = toc(tic0);
+%
+if wsvs>0
+	fprintf('%s:  Completed in %s\n', mfnm, flb3TimeText(info.timeTotal))
+end
+if wsvs<0
+	delete(wBar)
+end
 %
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox3D
@@ -553,9 +560,7 @@ for k = 1:numel(ofc)
 		case {'minVolume','minHeight','minWidth','minDepth'}
 			flb3Scalar(@lt,60)
 		case 'display'
-			flb3String('silent','verbose','waitbar')
-		case 'mkUnion'
-			flb3Boolean()
+			flb3String('silent','summary','verbose','waitbar')
 		otherwise
 			error('SC:findLargestBox3D:options:MissingCase','Please report this bug.')
 	end
@@ -564,11 +569,6 @@ end
 %
 %% Nested Functions %%
 %
-	function flb3Boolean() % logical.
-		assert(isequal(arg,0)||isequal(arg,1),...
-			sprintf('SC:findLargestBox3D:%s:NotLogical',dfn),...
-			'The <%s> value must be true or false.',dfn)
-	end
 	function flb3String(varargin) % text.
 		if ~(ischar(arg)&&ndims(arg)<3&&size(arg,1)==1&&any(strcmpi(arg,varargin))) %#ok<ISMAT>
 			tmp = sprintf(', "%s"',varargin{:});

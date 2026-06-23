@@ -5,7 +5,7 @@ classdef test_flb_fun < handle
 	%
 	% * MATLAB R2009b or later.
 	%
-	% See also 
+	% See also
 	properties
 		funHnd % handle to function under test
 		prgBar % handle to waitbar

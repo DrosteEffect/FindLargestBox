@@ -103,14 +103,13 @@ chk.i(M).o([3,3,3,3,3,3],[1,1,1],1)
 %
 % Single false voxel in an otherwise all-true 5x5x5 array.
 % Best box avoids the hole; many equal-volume candidates exist.
-% iszV=[5,5,5]: idm=1. Testing only with maxN=1 for determinism.
-% Best for thickness=5 (all rows): 2D footprint = 5x5 with (3,3) false.
-%   Best 2D rect in 5x5 missing (3,3): 5x2=10 or 2x5=10 or 4x2=8...
-%   Actually the best rectangle avoiding (3,3) in a 5x5 grid:
-%   rows 1:5, cols 1:2 -> area=10; or rows 1:5, cols 4:5 -> area=10;
-%   or rows 1:2, cols 1:5 -> area=10; or rows 4:5, cols 1:5 -> area=10.
-%   All give area=10, vol=10*5=50. The first found (leftmost) is rows 1:5, cols 1:2 (pages).
-%   In original coords: r=1:5, c=1:5, p=1:2.
+% iszV=[5,5,5]: idm=1 (tied). Slab over rows.
+% ii=1, jj=1 (thickness=1, row=1): slab=true(5,5), area=25, vol=25.
+% ii=1, jj=2 (thickness=2, rows 1:2): AND = true(5,5) (false voxel is at row 3),
+%   area=25, vol=50. bestVol=50.
+% ii=1, jj=3 (thickness=3): AND has (col=3,page=3)=false. Best area=10, vol=30. No update.
+% Best: rows 1:2, full 5x5 footprint. bestBox_perm=[1,5,1,5,1,2].
+% invPerm=[3,1,2]: bbox=[1,2, 1,5, 1,5]. dims=[2,5,5].
 M = true(5,5,5);
 M(3,3,3) = false;
 chk.i(M,'maxN',1).o([1,2,1,5,1,5],[2,5,5],50)
@@ -204,7 +203,7 @@ chk.i(M,opts).o([2,4,3,7,2,4],[3,5,3],45)
 %
 % Struct with multiple dimension constraints, all satisfied.
 opts = struct('minHeight',1, 'maxHeight',5, 'minWidth',1, 'maxWidth',6, ...
-              'minDepth',1, 'maxDepth',5, 'minVolume',1, 'maxVolume',100, 'maxN',1);
+	'minDepth',1, 'maxDepth',5, 'minVolume',1, 'maxVolume',100, 'maxN',1);
 chk.i(M,opts).o([2,5,3,7,2,4],[4,5,3],60)
 %
 %% maxN Option %%
@@ -385,15 +384,11 @@ chk.i(M,'maxN',1).o([4,6,1,10,1,3],[3,10,3],90)
 %
 % Hollow cube shell: all-true outer shell, false interior.
 % iszV=[8,8,8]: idm=1 (tied).  Slab over rows.
-% For thickness=1 (any single outer row or col-page slice):
-%   slab footprint = one 8x8 layer. findLargestBox2D returns 8x8=64, vol=64.
-% For thickness=2 (rows 1:2 or 7:8): AND of two outer row slices = 8x8 true (both solid). vol=128.
-% For thickness=7 (rows 1:7): AND includes interior -> cols 2:7, pages 2:7 false.
-%   Actually row 1 is all true and row 7 is all true but for rows 1:7 AND, row slices 2:6
-%   have the hollow (cols 2:7, pages 2:7 = false).  AND = only outer ring.
-%   In 2D (8x8): outer ring pattern.  Best rect in ring = 8x1=8 border strip.
-% Best global: thickness=1 or 2 along rows.  For thickness=2 (rows 1:2 or 7:8): vol=128.
-% After inv perm [3,1,2]: rows 1:2, cols 1:8, pages 1:8 -> bbox=[1,2,1,8,1,8], vol=128.
+% For thickness=1 (any single all-true row, e.g. row 1 or row 8):
+%   slab footprint = true(8,8), area=64, vol=64.
+% For thickness=2 (rows 1:2): AND of row-1 (all-true) with row-2 (outer ring)
+%   = outer ring. Best rect in ring = 8x1=8, vol=16. Worse.
+% Best global: thickness=1, vol=64.
 M = true(8,8,8);
 M(2:7, 2:7, 2:7) = false;
 chk.i(M,'maxN',1).o([1,1,1,8,1,8],[1,8,8],64)
@@ -637,9 +632,9 @@ chk.i(M,'maxN',1).o([5,8,1,8,1,8],[4,8,8],256)
 %% LeetCode 2D Example Extended to 3D %%
 %
 % Classic 2D example repeated through 5 pages; best 2D rect is 2x3=6 (rows 2:3, cols 3:5).
-% Extended through 5 pages: vol=6*5=30. Array size [4,5,5]: pages=5 tied with rows=4... 
+% Extended through 5 pages: vol=6*5=30. Array size [4,5,5]: pages=5 tied with rows=4...
 % Actually [4,5,5]: min=4 at row (idm=1). Slab over rows.
-% For all 4 rows AND: only positions true in ALL rows. Row 4 = [1,0,0,1,0] in 2D, 
+% For all 4 rows AND: only positions true in ALL rows. Row 4 = [1,0,0,1,0] in 2D,
 %   which kills the "always-true" region.
 % Best rect for thickness=2 (rows 2:3): slab AND(row2, row3) = ...
 %   Row 2: [1,0,1,1,1] * 5 pages, row 3: [1,1,1,1,1] * 5 pages.
@@ -648,7 +643,7 @@ chk.i(M,'maxN',1).o([5,8,1,8,1,8],[4,8,8],256)
 %   Actually: jszR=cols(5), jszC=pages(5). 2D matrix = [1,0,1,1,1] along rows for each page.
 %   Best 2D rect in [1,0,1,1,1] (5-row matrix, all 5 pages identical pattern):
 %   Pattern per col (in 2D row direction): [1,0,1,1,1]. Best rect crosses cols 3:5 (all 5 pages).
-%   2D area = 3*5=15 (rows=cols 3:5 of original, cols=pages 1:5). Vol=15*2=30. 
+%   2D area = 3*5=15 (rows=cols 3:5 of original, cols=pages 1:5). Vol=15*2=30.
 %   bbox in perm space: [3,5, 1,5, 2,3]. Inv perm [3,1,2]: r=2:3, c=3:5, p=1:5.
 M2D = logical([1,0,1,0,0; 1,0,1,1,1; 1,1,1,1,1; 1,0,0,1,0]);
 M = repmat(M2D, [1,1,5]);

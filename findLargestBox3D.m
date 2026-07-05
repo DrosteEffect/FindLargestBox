@@ -197,7 +197,7 @@ assert(stpo.minHeight*stpo.minWidth*stpo.minDepth <= stpo.maxVolume,...
 	'SC:findLargestBox3D:options:MinDimsExceedMaxVolume',...
 	'The minHeight*minWidth*minDepth (%g) exceeds maxVolume (%g).', stpo.minHeight*stpo.minWidth*stpo.minDepth, stpo.maxVolume)
 assert(stpo.maxHeight*stpo.maxWidth*stpo.maxDepth >= stpo.minVolume,...
-	'SC:findLargestBox3D:options:MaxDimsSubceedMinVolume',...
+	'SC:findLargestBox3D:options:MaxDimsBelowMinVolume',...
 	'The minVolume (%g) exceeds maxHeight*maxWidth*maxDepth (%g).', stpo.minVolume, stpo.maxHeight*stpo.maxWidth*stpo.maxDepth)
 %
 switch numel(varargin)
@@ -510,7 +510,7 @@ ss.width  = bWd;
 ss.depth  = bDp;
 ss.volume = bHt * bWd * bDp;
 ss.area   = 2*(bHt*bWd + bHt*bDp + bWd*bDp);
-ss.diagonal = sqrt(bHt.^2 + bWd.^2 + bDp.^2);
+ss.diagonal = hypot(hypot(bHt,bWd),bDp);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb3Geometry
 function str = flb3TimeText(toa)

@@ -182,7 +182,7 @@ assert(stpo.minHeight*stpo.minWidth <= stpo.maxArea,...
 	'SC:findLargestBox2D:options:MinDimsExceedMaxArea',...
 	'The minHeight*minWidth (%g) exceeds maxArea (%g).', stpo.minHeight*stpo.minWidth, stpo.maxArea)
 assert(stpo.maxHeight*stpo.maxWidth >= stpo.minArea,...
-	'SC:findLargestBox2D:options:MaxDimsSubceedMinArea',...
+	'SC:findLargestBox2D:options:MaxDimsBelowMinArea',...
 	'The minArea (%g) exceeds maxHeight*maxWidth (%g).', stpo.minArea, stpo.maxHeight*stpo.maxWidth)
 %
 switch numel(varargin)
@@ -499,7 +499,7 @@ ss.height = bHt;
 ss.width  = bWd;
 ss.area   = bHt * bWd;
 ss.perimeter = 2*(bHt + bWd);
-ss.diagonal  = sqrt(bHt.^2 + bWd.^2);
+ss.diagonal  = hypot(bHt,bWd);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2Geometry
 function str = flb2TimeText(toa)

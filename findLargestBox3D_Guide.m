@@ -1,7 +1,7 @@
 %% |FINDLARGESTBOX3D| User Guide
 %
-% The function <https://www.mathworks.com/matlabcentral/fileexchange/######
-% |findLargestBox3D|> finds the maximum-volume axis-aligned cuboid(s)
+% The function
+% |findLargestBox3D| finds the maximum-volume axis-aligned cuboid(s)
 % within a 3D boolean mask using an exact slab-collapse algorithm.
 %
 % The mask can be provided either as a 3D logical/numeric array, or as
@@ -68,7 +68,7 @@ bbox = findLargestBox3D(mask)
 % * |.box(k).width|    -- the width in voxels.
 % * |.box(k).depth|    -- the depth in voxels.
 % * |.box(k).volume|   -- the volume in voxels.
-% * |.box(k).area|     -- the total surface area.
+% * |.box(k).surface|  -- the total surface area.
 %
 [~,~,~,info] = findLargestBox3D(mask)
 info.box(1)

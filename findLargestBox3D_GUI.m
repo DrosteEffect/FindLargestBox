@@ -35,20 +35,15 @@ persistent fgh fnhSetVals fnhGetVals
 % R2016a  | uifigure
 % R2009b  | tilde argument placeholder
 %
-%% Default Option Values %%
-%
-stpo = struct('maxN',Inf, ...
-	'minVolume',1, 'maxVolume',Inf, ...
-	'minHeight',1, 'maxHeight',Inf, ...
-	'minWidth' ,1, 'maxWidth' ,Inf, ...
-	'minDepth' ,1, 'maxDepth' ,Inf);
-%
 %% Input Wrangling %%
 %
 egArr = flb3DemoMasks();
 %
 ido = cellfun(@(a)isnumeric(a)||islogical(a), varargin);
-id1 = find([~ido, true], 1, 'first');
+id1 = find([~ido,true], 1, 'first');
+%
+[~,~,~,info] = findLargestBox3D(true(0,0,0),varargin{id1:end});
+stpo = info.options;
 %
 switch id1
 	case 1  % do nothing
@@ -65,37 +60,6 @@ end
 %
 egArr = egArr(end:-1:1);
 [egArr.current] = deal(egArr.default);
-%
-%% Parse Options %%
-%
-varg = varargin(id1:end);
-dfns = fieldnames(stpo);
-%
-if isscalar(varg) && isstruct(varg{1})
-	opts = varg{1};
-	assert(isstruct(opts)&&isscalar(opts),...
-		'SC:findLargestBox3D_GUI:options:notScalarStruct',...
-		'Optional inputs must be in one scalar structure or name-value pairs.')
-	fnms = fieldnames(opts);
-	for kk = 1:numel(fnms)
-		ixR = strcmpi(fnms{kk}, dfns);
-		if any(ixR)
-			stpo.(dfns{ixR}) = opts.(fnms{kk});
-		end
-	end
-else
-	for kk = 1:2:numel(varg)
-		if ischar(varg{kk}) || isstring(varg{kk})
-			ixR = strcmpi(varg{kk}, dfns);
-			if any(ixR)
-				stpo.(dfns{ixR}) = varg{kk+1};
-			end
-		else
-			error('SC:findLargestBox3D_GUI:options:notNameValuePairs', ...
-				'Options must be supplied as a scalar struct or as name-value pairs.')
-		end
-	end
-end
 %
 %% Ensure Figure %%
 %
@@ -1025,6 +989,7 @@ N = max(vxC);
 P = max(vxP);
 mask = false(M,N,P);
 mask(sub2ind([M,N,P], vxR,vxC,vxP)) = true;
+% Note that SUB2IND checks for real finite positive values.
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb3Idx2Mask
 function S = flb3DemoMasks()

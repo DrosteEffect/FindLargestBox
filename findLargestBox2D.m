@@ -1,5 +1,5 @@
 function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
-% Find the largest axis-aligned rectangle in a 2D boolean mask.
+% Find the largest usable axis-aligned rectangle in a 2D boolean mask.
 %
 % Finds the maximum-area axis-aligned rectangle within a 2D boolean mask
 % using a reasonably efficient O(rows*cols) histogram-based algorithm. The
@@ -122,7 +122,7 @@ function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
 %          .numBoxes      : number of rectangles found
 %          .timeTotal     : total execution time in seconds
 %   uniA = the union of the areas of all returned rectangles. Calculating
-%          the union is memory intensive (it generates a full array).
+%          the union is memory intensive (it generates the full array).
 %
 %% Dependencies %%
 %
@@ -255,6 +255,7 @@ if wsvs
 	end
 	if wsvs<0
 		wBar = waitbar(0,'Starting ...', 'Name',mfnm);
+		wBCU = onCleanup(@()flb2wbDelete(wBar));
 	end
 end
 %
@@ -471,16 +472,22 @@ info.timeTotal = toc(tic0);
 if wsvs>0
 	fprintf('%s:  Completed in %s\n', mfnm, flb2TimeText(info.timeTotal))
 end
-if wsvs<0
-	delete(wBar)
-end
 %
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D
+function flb2wbDelete(wb)
+try %#ok<TRYNC>
+	delete(wb)
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2wbDelete
 function out = flb2CheckIndex(ord,anm,inp)
 assert(isnumeric(inp)&&isreal(inp)&&(isvector(inp)||isequal(inp,[])),...
 	sprintf('SC:findLargestBox2D:%s:notRealNumericVector',anm),...
 	'%s input <%s> must be a real numeric vector',ord,anm)
+assert(all(isfinite(inp)),...
+	sprintf('SC:findLargestBox2D:%s:nonfiniteValues',anm),...
+	'%s input <%s> must not contain Inf/Nan values',ord,anm)
 assert(isinteger(inp) || all(fix(inp)==inp),...
 	sprintf('SC:findLargestBox2D:%s:fractionalValues',anm),...
 	'%s input <%s> must not contain fractional values',ord,anm)

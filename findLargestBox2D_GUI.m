@@ -35,19 +35,15 @@ persistent fgh fnhSetVals fnhGetVals
 % R2016a  | uifigure
 % R2009b  | tilde argument placeholder
 %
-%% Default Option Values %%
-%
-stpo = struct('maxN',Inf,...
-	'minArea'  ,1, 'maxArea'  ,Inf,...
-	'minHeight',1, 'maxHeight',Inf,...
-	'minWidth' ,1, 'maxWidth' ,Inf);
-%
 %% Input Wrangling %%
 %
 egMat = flb2DemoMasks(); % renew all masks on each function call.
 %
 ido = cellfun(@(a)isnumeric(a)||islogical(a),varargin);
 id1 = find([~ido,true],1,'first');
+%
+[~,~,~,info] = findLargestBox2D(true(0,0),varargin{id1:end});
+stpo = info.options;
 %
 switch id1
 	case 1 % do nothing
@@ -64,37 +60,6 @@ end
 %
 egMat = egMat(end:-1:1);
 [egMat.current] = deal(egMat.default);
-%
-%% Options %%
-%
-varg = varargin(id1:end);
-dfns = fieldnames(stpo);
-%
-if isscalar(varg)
-	opts = varg{1};
-	assert(isstruct(opts)&&isscalar(opts),...
-		'SC:findLargestBox2D_GUI:options:notScalarStruct',...
-		'Optional inputs must be in one scalar structure or name-value pairs.')
-	fnms = fieldnames(opts);
-	for kk = 1:numel(fnms)
-		ix = strcmpi(fnms{kk},dfns);
-		if any(ix)
-			stpo.(dfns{ix}) = opts.(fnms{kk});
-		end
-	end
-else
-	for kk = 1:2:numel(varg)
-		if ischar(varg{kk}) || isstring(varg{kk})
-			ix = strcmpi(varg{kk},dfns);
-			if any(ix)
-				stpo.(dfns{ix}) = varg{kk+1};
-			end
-		else
-			error('SC:findLargestBox2D_GUI:options:notNameValuePairs',...
-				'Optional inputs must be in one scalar structure or name-value pairs.')
-		end
-	end
-end
 %
 %% Ensure Figure %%
 %
@@ -789,6 +754,7 @@ N = max(pxc);
 %
 mask = false(M,N);
 mask(sub2ind([M,N],pxr,pxc)) = true;
+% Note that SUB2IND checks for real finite positive values.
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb2Idx2Mask
 function S = flb2DemoMasks()

@@ -1,5 +1,5 @@
 function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
-% Find the largest empty axis-aligned box in a 3D boolean mask.
+% Find the largest usable axis-aligned box in a 3D boolean mask.
 %
 % Finds the maximum-volume axis-aligned rectangular cuboid within a 3D
 % boolean mask using exact slab-collapse along the smallest dimension. The
@@ -122,7 +122,7 @@ function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 %          .box(k).height    : number of voxel rows
 %          .box(k).width     : number of voxel columns
 %          .box(k).depth     : number of voxel pages
-%          .box(k).area      : total surface area
+%          .box(k).surface   : total surface area
 %          and some useful information about the function/algorithm:
 %          .options       : the used option set
 %          .inputFormat   : 'array' or 'indices'
@@ -132,7 +132,7 @@ function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 %          .timeTotal     : total execution time in seconds
 %          .time2DFun     : 2D function execution time in seconds
 %   uniV = the union of the volumes of all returned cuboids. Calculating
-%          the union is memory intensive (it generates a full array).
+%          the union is memory intensive (it generates the full array).
 %
 %% Dependencies %%
 %
@@ -283,6 +283,7 @@ if wsvs
 	end
 	if wsvs<0
 		wBar = waitbar(0,'Starting ...','Name',mfnm);
+		wBCU = onCleanup(@()flb3wbDelete(wBar));
 	end
 end
 %
@@ -481,16 +482,22 @@ info.timeTotal = toc(tic0);
 if wsvs>0
 	fprintf('%s:  Completed in %s\n', mfnm, flb3TimeText(info.timeTotal))
 end
-if wsvs<0
-	delete(wBar)
-end
 %
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox3D
+function flb3wbDelete(wb)
+try %#ok<TRYNC>
+	delete(wb)
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb3wbDelete
 function out = flb3CheckIndex(ord,anm,inp)
 assert(isnumeric(inp)&&isreal(inp)&&(isvector(inp)||isequal(inp,[])),...
 	sprintf('SC:findLargestBox3D:%s:notRealNumericVector',anm),...
 	'%s input <%s> must be a real numeric vector', ord, anm)
+assert(all(isfinite(inp)),...
+	sprintf('SC:findLargestBox3D:%s:nonfiniteValues',anm),...
+	'%s input <%s> must not contain Inf/Nan values',ord,anm)
 assert(isinteger(inp) || all(fix(inp)==inp),...
 	sprintf('SC:findLargestBox3D:%s:fractionalValues',anm),...
 	'%s input <%s> must not contain fractional values', ord, anm)
@@ -509,7 +516,7 @@ ss.height = bHt;
 ss.width  = bWd;
 ss.depth  = bDp;
 ss.volume = bHt * bWd * bDp;
-ss.area   = 2*(bHt*bWd + bHt*bDp + bWd*bDp);
+ss.surface  = 2*(bHt*bWd + bHt*bDp + bWd*bDp);
 ss.diagonal = hypot(hypot(bHt,bWd),bDp);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%flb3Geometry

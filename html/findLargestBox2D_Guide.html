@@ -9,7 +9,7 @@ To make changes, update the MATLAB code and republish this document.
 <title>FINDLARGESTBOX2D User Guide</title>
 <meta name="generator" content="MATLAB 25.2">
 <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
-<meta name="DC.date" content="2026-06-23">
+<meta name="DC.date" content="2026-10-29">
 <meta name="DC.source" content="findLargestBox2D_Guide.m">
 <style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
@@ -79,7 +79,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <h1>
 <tt>FINDLARGESTBOX2D</tt> User Guide</h1>
 <!--introduction-->
-<p>The function <a href="https://www.mathworks.com/matlabcentral/fileexchange/######"><tt>findLargestBox2D</tt></a> finds the maximum-area axis-aligned rectangle(s) within a 2D boolean mask using a reasonably efficient <a href="https://en.wikipedia.org/wiki/Big_O_notation">O(rows*cols)</a> histogram-based algorithm.</p>
+<p>The function <tt>findLargestBox2D</tt> finds the maximum-area axis-aligned rectangle(s) within a 2D boolean mask using a reasonably efficient <a href="https://en.wikipedia.org/wiki/Big_O_notation">O(rows*cols)</a> histogram-based algorithm.</p>
 <p>The function accepts the mask as a logical matrix, a numeric matrix, a sparse matrix, or as row- and column-index vectors. Optional name-value arguments allow the user to specify the maximum number of matches, as well as limits on the rectangle width(s), height(s) and area(s).</p>
 <!--/introduction-->
 <h2>Contents</h2>
@@ -241,7 +241,7 @@ info.box(1)
          numBoxes: 2
       inputFormat: 'matrix'
               box: [2&times;1 struct]
-        timeTotal: 0.0021354
+        timeTotal: 0.0008828
 ans = 
   struct with fields:
 
@@ -310,7 +310,7 @@ info =
          numBoxes: 2
       inputFormat: 'matrix'
               box: [2&times;1 struct]
-        timeTotal: 0.0017902
+        timeTotal: 0.000535
 </pre>
 <h2 id="10">Option <tt>maxN</tt> -- Limit Number of Results</h2>
 <p>Use the <tt>'maxN'</tt> option to limit the number of rectangles returned. This is useful when you only need the first occurrence, or when memory usage from many duplicates is a concern.</p>
@@ -419,7 +419,7 @@ info =
     rowsProcessed: 12
          numBoxes: 0
       inputFormat: 'matrix'
-        timeTotal: 0.0004237
+        timeTotal: 0.0004682
 </pre>
 <h2 id="17">Performance Comparison Across Input Formats</h2>
 <p>The three input formats (logical/numeric matrix, index vectors, sparse matrix) can differ substantially in memory use and runtime depending on mask size and density. There is no universally fastest format; the examples below time all three on a 9999x9999 grid with a small usable region so that you can observe the tradeoffs on your own hardware.</p>
@@ -458,9 +458,9 @@ ans =
 ans =
   logical
    1
-  1.5709 s  logical matrix
-  0.6093 s  index vectors
-  0.5947 s  sparse matrix
+  1.3895 s  logical matrix
+  0.6170 s  index vectors
+  0.6098 s  sparse matrix
 </pre>
 <h2 id="18">Interactive GUI (R2020b or later)</h2>
 <p>Try the interactive GUI: select from some interesting example matrices, toggle values by clicking on the image, and see the rectangles!</p>
@@ -476,8 +476,8 @@ ans =
 ##### SOURCE BEGIN #####
 %% |FINDLARGESTBOX2D| User Guide
 %
-% The function <https://www.mathworks.com/matlabcentral/fileexchange/######
-% |findLargestBox2D|> finds the maximum-area axis-aligned rectangle(s)
+% The function
+% |findLargestBox2D| finds the maximum-area axis-aligned rectangle(s)
 % within a 2D boolean mask using a reasonably efficient
 % <https://en.wikipedia.org/wiki/Big_O_notation O(rows*cols)>
 % histogram-based algorithm.

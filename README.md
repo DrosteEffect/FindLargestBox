@@ -153,12 +153,12 @@ The `info` structure contains the following fields:
 
 If any rectangles are found, then `info` also contains the the `box` field, an *Nx1* nested struct with information about each rectangle:
 
-- `.box(k).indices`   — same as `bbox`
+- `.box(k).indices`   — same as `bbox` output
 - `.box(k).corners`   — pixel-edge coordinates `[r1-½, r2+½, c1-½, c2+½]`
 - `.box(k).center`    — centroid coordinates
 - `.box(k).height`    — number of pixel rows
 - `.box(k).width`     — number of pixel columns
-- `.box(k).area`      — same as `area`
+- `.box(k).area`      — same as `area` output
 - `.box(k).perimeter` — perimeter length
 - `.box(k).diagonal`  — distance between the farthest corners
 
@@ -184,22 +184,22 @@ The `info` structure contains the following fields:
 
 If any cuboids are found, then `info` also contains the `box` field, an *Nx1* nested struct with information about each cuboid:
 
-- `.box(k).indices`    — same as `bbox`
+- `.box(k).indices`    — same as `bbox` output
 - `.box(k).corners`    — voxel-edge coordinates `[r1-½, r2+½, c1-½, c2+½, p1-½, p2+½]`
 - `.box(k).center`     — centroid coordinates
 - `.box(k).height`     — number of voxel rows
 - `.box(k).width`      — number of voxel columns
 - `.box(k).depth`      — number of voxel pages
-- `.box(k).volume`     — same as `volume`
-- `.box(k).area`       — total surface area of the cuboid
+- `.box(k).volume`     — same as `volume` output
+- `.box(k).surface`    — total surface area of the cuboid
 - `.box(k).diagonal`   — distance between the farthest corners
 
 ---
 
 ## Performance Characteristics ##
 
-The 2D function has O(rows × cols) time complexity, which is optimal since every cell must be examined. In practice, performance varies with data patterns, as masks with many consecutive usable cells benefit from better cache performance and fewer stack operations. For sparse or index-based inputs, only one row at a time is constructed in memory, providing significant memory savings.
+The core 2D function has O(rows × cols) time complexity, which is optimal since every cell must be examined. In practice, performance varies with data patterns, as masks with many consecutive usable cells benefit from better cache performance and fewer stack operations. For sparse or index-based inputs, only one row at a time is constructed in memory, providing significant memory savings.
 
-The 3D function has O(M × N²) complexity where N is the minimum dimension and M is the product of the other two. The automatic selection of the smallest dimension for iteration can noticeably impact performance. For a 100×200×50 mask, iterating along the smallest dimension (50) requires about 50 million operations, whereas iterating along the largest dimension (200) would require about 200 million operations (a 4-fold difference).
+The core 3D function has O(M × N²) time complexity, where N is the minimum dimension and M is the product of the other two. The automatic selection of the smallest dimension for iteration can noticeably impact performance. For a 100×200×50 mask, iterating along the smallest dimension (50) requires about 50 million operations, whereas iterating along the largest dimension (200) would require about 200 million operations (a 4-fold difference).
 
-Memory usage is carefully optimised in both functions. The 2D function requires only O(cols) working memory regardless of input format. The 3D function stores one 2D slab whose size is determined by the two largest dimensions when using array input, or performs coordinate set operations without creating full masks when using index input. For very large sparse datasets, index input can reduce memory requirements by orders of magnitude.
+Memory usage is carefully optimised in both functions. Use of optional arguments can affect both the time and memory complexity. The 2D function requires only O(cols) working memory regardless of input format. The 3D function stores one 2D slab whose size is determined by the two largest dimensions when using array input, or performs coordinate set operations without creating full masks when using index input. For very large sparse datasets, index input can reduce memory requirements by orders of magnitude.

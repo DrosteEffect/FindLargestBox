@@ -1,7 +1,7 @@
 %% |FINDLARGESTBOX2D| User Guide
 %
-% The function <https://www.mathworks.com/matlabcentral/fileexchange/######
-% |findLargestBox2D|> finds the maximum-area axis-aligned rectangle(s)
+% The function
+% |findLargestBox2D| finds the maximum-area axis-aligned rectangle(s)
 % within a 2D boolean mask using a reasonably efficient
 % <https://en.wikipedia.org/wiki/Big_O_notation O(rows*cols)>
 % histogram-based algorithm.

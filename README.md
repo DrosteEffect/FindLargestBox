@@ -18,7 +18,7 @@ The `findLargestBox2D` function uses a histogram-based algorithm that treats eac
 
 ### 3D: Slab-Collapse Method ###
 
-The `findLargestBox3D` function extends the 2D algorithm using an exact slab-collapse approach. The algorithm first identifies the smallest dimension to use for iteration, which minimises the O(N²) cost of checking all thickness ranges. For each pair of slabs defining a thickness, the algorithm computes a 2D footprint by taking the logical AND of all slabs in that range, then calls `findLargestBox2D` on this footprint to find the maximum area. The volume is calculated as area times thickness. An early exit optimisation stops iteration when a slab becomes empty, since no thicker box is possible from that starting slab. Finally, the result is mapped back to the original coordinate system.
+The `findLargestBox3D` function extends the 2D algorithm using an exact slab-collapse approach. The algorithm first identifies the smallest dimension to use for iteration, which minimises the O(N²) cost of checking all thickness ranges. For each pair of slabs defining a thickness, the algorithm computes a 2D footprint by taking the logical AND of all slabs in that range, then calls `findLargestBox2D` on this footprint to find the maximum area. The volume is calculated as area times thickness. An early exit optimisation stops iteration when a slab contains no usable elements, since no thicker box is possible from that starting slab. Finally, the result is mapped back to the original coordinate system.
 
 ---
 
@@ -198,7 +198,7 @@ If any cuboids are found, then `info` also contains the `box` field, an *Nx1* ne
 
 ## Performance Characteristics ##
 
-The core 2D function has O(rows × cols) time complexity, which is optimal since every cell must be examined. In practice, performance varies with data patterns, as masks with many consecutive usable cells benefit from better cache performance and fewer stack operations. For sparse or index-based inputs, only one row at a time is constructed in memory, providing significant memory savings.
+The core 2D function has O(rows × cols) time complexity, which is optimal since every cell must be examined. In practice, performance varies with data patterns, as masks with many consecutive usable cells benefit from better cache performance and fewer stack operations. For sparse or index-based inputs, only one row at a time is constructed in memory, providing significant memory savings. Dimension/area constraints, enumeration of equal optima, and duplicate suppression can also add to the processing.
 
 The core 3D function has O(M × N²) time complexity, where N is the minimum dimension and M is the product of the other two. The automatic selection of the smallest dimension for iteration can noticeably impact performance. For a 100×200×50 mask, iterating along the smallest dimension (50) requires about 50 million operations, whereas iterating along the largest dimension (200) would require about 200 million operations (a 4-fold difference).
 

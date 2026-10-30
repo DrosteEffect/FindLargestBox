@@ -1,11 +1,11 @@
 function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 % Find the largest usable axis-aligned box in a 3D boolean mask.
 %
-% Finds the maximum-volume axis-aligned rectangular cuboid within a 3D
+% Finds the maximum-volume axis-aligned rectangular cuboids within a 3D
 % boolean mask using exact slab-collapse along the smallest dimension. The
-% mask uses TRUE/non-zero for usable voxels and FALSE for unusable voxels.
+% mask uses TRUE/non-zero for usable voxels and FALSE/zero for blocked voxels.
 % For each slab range, a 2D footprint is analyzed using findLargestBox2D.
-% Runtime depends on the bounding span, not on the number of true values.
+% Runtime depends on the bounding span, not on the number of usable voxels.
 %
 %%% Syntax %%%
 %
@@ -24,8 +24,8 @@ function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 %       - Call findLargestBox2D to find max area in footprint
 %       - Calculate volume = area * thickness
 %       - Track global maximum
-%       - Apply depth bounds and empty-slab early exit
-% 3. Map final bounding box back to original coordinate system
+%       - Apply depth bounds and blocked-slab early exit
+% 3. Map final box back to original coordinate system
 %
 % Time complexity:  O(M*N^2) where N = min dimension, M = product of other dims
 % Space complexity: O(M) for the 2D slab footprint
@@ -94,7 +94,7 @@ function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 %% Input Arguments %%
 %
 %   mask = 3D logical or numeric array where:
-%          TRUE / non-zero == empty/usable voxel
+%          TRUE / non-zero == usable/empty voxel
 %          FALSE / zero    == blocked/unusable voxel
 %   voxR = NumericVector of M usable voxel row indices.
 %   voxC = NumericVector of M usable voxel column indices.
@@ -104,7 +104,7 @@ function [bbox,dims,volume,info,uniV] = findLargestBox3D(mask,varargin)
 %% Output Arguments %%
 %
 %   bbox = Nx6 matrix with columns [r1,r2, c1,c2, p1,p2], the corner
-%          indices of the largest cuboid(s) consisting of TRUE only, where:
+%          indices of the largest cuboid(s) consisting of usable voxels, where:
 %          r1,r2 = first and last row indices,
 %          c1,c2 = first and last column indices,
 %          p1,p2 = first and last page indices.
@@ -210,6 +210,12 @@ switch numel(varargin)
 		assert(ndims(mask)<4,...
 			'SC:findLargestBox3D:mask:invalidSize',...
 			'1st input <mask> must be a 3D array.')
+		assert(isreal(mask),...
+			'SC:findLargestBox3D:mask:complexData',...
+			'1st input <mask> must be real (not complex).')
+		assert(all(isfinite(mask(:))),...
+			'SC:findLargestBox3D:mask:nonfiniteData',...
+			'1st input <mask> must have finite values only (not Inf/NaN).')
 		iszV = size(mask);
 		iszV(end+1:3) = 1;
 	case 2
@@ -331,7 +337,7 @@ for ii = 1:jszP
 			%
 			% Compute intersection of coordinates across slabs ii:jj
 			if isempty(slabIdx{ii})
-				break % First slab is empty
+				break % First slab is blocked
 			end
 			%
 			% Start with first slab
@@ -344,7 +350,7 @@ for ii = 1:jszP
 					break % Intersection already empty
 				end
 				if isempty(slabIdx{kk})
-					slabCoords = []; % Empty slab means empty intersection
+					slabCoords = []; % Blocked slab means empty intersection
 					break
 				end
 				%
@@ -373,7 +379,7 @@ for ii = 1:jszP
 			slab = slab & logical(slice2D);
 			%
 			if ~any(slab(:))
-				break % Empty footprint, no point continuing
+				break % Footprint contains no usable voxels
 			end
 			%
 		end

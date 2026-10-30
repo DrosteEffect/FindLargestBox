@@ -1,10 +1,10 @@
 function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
 % Find the largest usable axis-aligned rectangle in a 2D boolean mask.
 %
-% Finds the maximum-area axis-aligned rectangle within a 2D boolean mask
+% Finds the maximum-area axis-aligned rectangles within a 2D boolean mask
 % using a reasonably efficient O(rows*cols) histogram-based algorithm. The
-% mask uses TRUE/non-zero for usable pixels and FALSE/zero for unusable pixels.
-% Runtime depends on the bounding span, not on the number of true values.
+% mask uses TRUE/non-zero for usable pixels and FALSE/zero for blocked pixels.
+% Runtime depends on the bounding span, not on the number of usable pixels.
 %
 %%% Syntax %%%
 %
@@ -23,6 +23,7 @@ function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
 % Time  complexity: O(rows*cols)
 % Space complexity: O(cols)
 %
+% Optional arguments detrimentally affect the time/space complexity.
 % For sparse/index inputs, only one row at a time is created in full,
 % providing significant memory savings for very sparse data.
 %
@@ -89,7 +90,7 @@ function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
 %% Input Arguments %%
 %
 %   mask = 2D logical or numeric or sparse matrix where:
-%          TRUE / non-zero == empty/usable pixel
+%          TRUE / non-zero == usable/empty pixel
 %          FALSE / zero    == blocked/unusable pixel
 %   pixR = NumericVector of M usable pixel row indices.
 %   pixC = NumericVector of M usable pixel column indices.
@@ -98,7 +99,7 @@ function [bbox,dims,area,info,uniA] = findLargestBox2D(mask,varargin)
 %% Output Arguments %%
 %
 %   bbox = Nx4 matrix with columns [r1,r2,c1,c2], the corner indices of
-%          the largest rectangle(s) consisting of TRUE/~0 only, where:
+%          the largest rectangle(s) consisting of usable pixels, where:
 %          r1,c1 = the first row and column indices,
 %          r2,c2 = the last row and column indices,
 %          If no rectangle is found then bbox=[].
@@ -187,12 +188,17 @@ assert(stpo.maxHeight*stpo.maxWidth >= stpo.minArea,...
 %
 switch numel(varargin)
 	case 0
+		if isnumeric(mask)
+			assert(isreal(mask),...
+				'SC:findLargestBox2D:mask:complexData',...
+				'1st input <mask> must be real (not complex).')
+			assert(all(isfinite(mask(:))),...
+				'SC:findLargestBox2D:mask:nonfiniteData',...
+				'1st input <mask> must have finite values only (not Inf/NaN).')
+		end
 		if issparse(mask)
 			info.inputFormat = 'sparse';
 			isrc = true;
-			assert(isreal(mask),...
-				'SC:findLargestBox2D:mask:complexData',...
-				'1st input <mask> must be real, not complex!')
 			[pixR,pixC] = find(mask);
 			minr = min(pixR);
 			minc = min(pixC);
@@ -308,60 +314,7 @@ for rr = minr:maxr
 			popC = stackPos(stackSize);
 			popW = cc - popC;
 			stackSize = stackSize - 1;
-			% Find maximum achievable area given constraints
-			Hmax = min(popH, stpo.maxHeight);
-			Wmax = min(popW, stpo.maxWidth);
-			effA = 0;
-			for eH = stpo.minHeight:Hmax
-				eW = min(Wmax, floor(stpo.maxArea/eH));
-				if eW >= stpo.minWidth && eH*eW > effA
-					effA = eH*eW;
-				end
-			end
-			% Collect ALL (eH,eW) shape pairs that achieve effA
-			if effA >= stpo.minArea
-				shapes = zeros(0,2);
-				for eH = stpo.minHeight:Hmax
-					eW = min(Wmax, floor(stpo.maxArea/eH));
-					if eH*eW==effA && eW>=stpo.minWidth
-						shapes(end+1,:) = [eH, eW]; %#ok<AGROW>
-					end
-				end
-				if ~isempty(shapes)
-					if effA>area
-						area = effA;
-						bestR1 = nan(0,1); bestC1 = nan(0,1);
-						bestHt = nan(0,1); bestWd = nan(0,1);
-					end
-					if effA==area
-						for si = 1:size(shapes,1)
-							effH = shapes(si,1);
-							effW = shapes(si,2);
-							for dR = 0:(popH-effH)
-								r1c = rr-popH+1+dR;
-								for dC = 0:(popW-effW)
-									c1c = popC+dC;
-									if numel(bestR1)>=stpo.maxN
-										break
-									end
-									if ~any(bestR1==r1c & bestC1==c1c & bestHt==effH & bestWd==effW)
-										bestR1(end+1,1) = r1c; %#ok<AGROW>
-										bestC1(end+1,1) = c1c; %#ok<AGROW>
-										bestHt(end+1,1) = effH; %#ok<AGROW>
-										bestWd(end+1,1) = effW; %#ok<AGROW>
-									end
-								end
-								if numel(bestR1)>=stpo.maxN
-									break
-								end
-							end
-							if numel(bestR1)>=stpo.maxN
-								break
-							end
-						end
-					end
-				end
-			end
+			flb2Candidate(popH,popC,popW,rr)
 			start = popC;
 		end
 		% Push current height onto stack if it is positive and different
@@ -378,60 +331,7 @@ for rr = minr:maxr
 		popC = stackPos(stackSize);
 		popW = cEnd - popC;
 		stackSize = stackSize - 1;
-		% Find maximum achievable area given constraints
-		Hmax = min(popH, stpo.maxHeight);
-		Wmax = min(popW, stpo.maxWidth);
-		effA = 0;
-		for eH = stpo.minHeight:Hmax
-			eW = min(Wmax, floor(stpo.maxArea/eH));
-			if eW >= stpo.minWidth && eH*eW > effA
-				effA = eH*eW;
-			end
-		end
-		% Collect ALL (eH,eW) shape pairs that achieve effA
-		if effA >= stpo.minArea
-			shapes = zeros(0,2);
-			for eH = stpo.minHeight:Hmax
-				eW = min(Wmax, floor(stpo.maxArea/eH));
-				if eH*eW==effA && eW>=stpo.minWidth
-					shapes(end+1,:) = [eH, eW]; %#ok<AGROW>
-				end
-			end
-			if ~isempty(shapes)
-				if effA>area
-					area = effA;
-					bestR1 = nan(0,1); bestC1 = nan(0,1);
-					bestHt = nan(0,1); bestWd = nan(0,1);
-				end
-				if effA==area
-					for si = 1:size(shapes,1)
-						effH = shapes(si,1);
-						effW = shapes(si,2);
-						for dR = 0:(popH-effH)
-							r1c = rr-popH+1+dR;
-							for dC = 0:(popW-effW)
-								c1c = popC+dC;
-								if numel(bestR1)>=stpo.maxN
-									break
-								end
-								if ~any(bestR1==r1c & bestC1==c1c & bestHt==effH & bestWd==effW)
-									bestR1(end+1,1) = r1c; %#ok<AGROW>
-									bestC1(end+1,1) = c1c; %#ok<AGROW>
-									bestHt(end+1,1) = effH; %#ok<AGROW>
-									bestWd(end+1,1) = effW; %#ok<AGROW>
-								end
-							end
-							if numel(bestR1)>=stpo.maxN
-								break
-							end
-						end
-						if numel(bestR1)>=stpo.maxN
-							break
-						end
-					end
-				end
-			end
-		end
+		flb2Candidate(popH,popC,popW,rr)
 	end
 end
 %
@@ -472,6 +372,65 @@ info.timeTotal = toc(tic0);
 if wsvs>0
 	fprintf('%s:  Completed in %s\n', mfnm, flb2TimeText(info.timeTotal))
 end
+%
+	function flb2Candidate(popH,popC,popW,rr)
+		% Evaluate one histogram rectangle and update the best candidates.
+		Hmax = min(popH, stpo.maxHeight);
+		Wmax = min(popW, stpo.maxWidth);
+		effA = 0;
+		for eH = stpo.minHeight:Hmax
+			eW = min(Wmax,floor(stpo.maxArea/eH));
+			if eW>=stpo.minWidth && (eH*eW)>effA
+				effA = eH*eW;
+			end
+		end
+		% Collect ALL (eH,eW) shape pairs that achieve effA
+		if effA>=stpo.minArea
+			shapes = zeros(0,2);
+			for eH = stpo.minHeight:Hmax
+				eW = min(Wmax, floor(stpo.maxArea/eH));
+				if eH*eW==effA && eW>=stpo.minWidth
+					shapes(end+1,:) = [eH,eW]; %#ok<AGROW>
+				end
+			end
+			if ~isempty(shapes)
+				if effA>area
+					area = effA;
+					bestR1 = nan(0,1);
+					bestC1 = nan(0,1);
+					bestHt = nan(0,1);
+					bestWd = nan(0,1);
+				end
+				if effA==area
+					for si = 1:size(shapes,1)
+						effH = shapes(si,1);
+						effW = shapes(si,2);
+						for dR = 0:(popH-effH)
+							r1c = rr-popH+1+dR;
+							for dC = 0:(popW-effW)
+								c1c = popC+dC;
+								if numel(bestR1)>=stpo.maxN
+									break
+								end
+								if ~any(bestR1==r1c & bestC1==c1c & bestHt==effH & bestWd==effW)
+									bestR1(end+1,1) = r1c; %#ok<AGROW>
+									bestC1(end+1,1) = c1c; %#ok<AGROW>
+									bestHt(end+1,1) = effH; %#ok<AGROW>
+									bestWd(end+1,1) = effW; %#ok<AGROW>
+								end
+							end
+							if numel(bestR1)>=stpo.maxN
+								break
+							end
+						end
+						if numel(bestR1)>=stpo.maxN
+							break
+						end
+					end
+				end
+			end
+		end
+	end
 %
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D

@@ -14,13 +14,13 @@
 %% Basic Usage: 2D Matrix
 %
 % |findLargestBox2D| accepts a 2D logical or numeric matrix where
-% |TRUE|/non-zero indicates usable pixels and |FALSE|/zero indicates
-% blocked pixels. It returns the bounding boxes of the largest rectangles
-% consisting entirely of |TRUE|/non-zero pixels.
+% TRUE/non-zero indicates usable pixels and FALSE/zero indicates
+% blocked pixels. It returns the corner indices of the largest rectangles
+% consisting entirely of usable pixels.
 mask = false(9,9);
 mask(2:3, 2:5) = true; % 2x4 = 8
 bbox = findLargestBox2D(mask)
-%% Output 1: |bbox| -- Bounding Box Indices
+%% Output 1: |bbox| -- Box Indices
 %
 % The first output |bbox| is an *Nx4* matrix with one row per rectangle
 % found. Its columns are |[r1, r2, c1, c2]|, where:
@@ -75,7 +75,7 @@ info.box(1)
 %% Input 1: Sparse Matrix
 %
 % For very large but sparsely populated grids, pass a sparse matrix.
-% Any non-zero element is treated as |TRUE| (usable); zeros are |FALSE|.
+% Any non-zero element is treated as usable; zero elements are blocked.
 % The function processes one row at a time, so it never materialises the
 % full dense matrix -- this can give significant memory savings:
 mask = sparse(10000, 10000);
@@ -150,7 +150,7 @@ findLargestBox2D(mask, 'minWidth',6)
 % multiple calls:
 opts = struct('maxN',3, 'maxWidth',3);
 findLargestBox2D(mask, opts)
-%% Empty or No Valid Rectangle
+%% No Usable Pixels or No Valid Rectangle
 %
 % If the mask contains no usable pixels, or if no rectangle satisfies the
 % active constraints, the function returns empty arrays for |bbox| and

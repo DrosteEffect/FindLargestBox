@@ -15,13 +15,13 @@
 %% Basic Usage: 3D Array
 %
 % |findLargestBox3D| accepts a 3D logical or numeric array where
-% |TRUE|/non-zero indicates usable voxels and |FALSE|/zero indicates
-% blocked voxels. It returns the bounding boxes of the largest cuboids
-% consisting entirely of |TRUE|/non-zero voxels.
+% TRUE/non-zero indicates usable voxels and FALSE/zero indicates
+% blocked voxels. It returns the corner indices of the largest cuboids
+% consisting entirely of usable voxels.
 mask = false(9,9,9);
 mask(2:4, 2:8, 2:3) = true; % 3x7x2 = 42
 bbox = findLargestBox3D(mask)
-%% Output 1: |bbox| -- Bounding Box Indices
+%% Output 1: |bbox| -- Box Indices
 %
 % The first output |bbox| is an *Nx6* matrix with one row per cuboid found.
 % Its columns are |[r1, r2, c1, c2, p1, p2]|, where:
@@ -153,7 +153,7 @@ mask(9:15, 6:8, 2:4) = true; % 7x3x3 = 63
 % multiple calls:
 opts = struct('maxN',1, 'minDepth',5);
 findLargestBox3D(mask, opts)
-%% Empty or No Valid Cuboid
+%% No Usable Voxels or No Valid Cuboid
 %
 % If the mask contains no usable voxels, or if no cuboid satisfies the
 % active constraints, the function returns empty arrays for |bbox| and

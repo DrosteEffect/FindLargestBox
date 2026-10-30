@@ -9,7 +9,7 @@ To make changes, update the MATLAB code and republish this document.
 <title>FINDLARGESTBOX2D User Guide</title>
 <meta name="generator" content="MATLAB 25.2">
 <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
-<meta name="DC.date" content="2026-10-29">
+<meta name="DC.date" content="2026-10-30">
 <meta name="DC.source" content="findLargestBox2D_Guide.m">
 <style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
@@ -89,7 +89,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <a href="#1">Basic Usage: 2D Matrix</a>
 </li>
 <li>
-<a href="#2">Output 1: <tt>bbox</tt> -- Bounding Box Indices</a>
+<a href="#2">Output 1: <tt>bbox</tt> -- Box Indices</a>
 </li>
 <li>
 <a href="#3">Output 2: <tt>dims</tt> -- Rectangle Dimensions</a>
@@ -131,7 +131,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <a href="#15">Options as a Struct</a>
 </li>
 <li>
-<a href="#16">Empty or No Valid Rectangle</a>
+<a href="#16">No Usable Pixels or No Valid Rectangle</a>
 </li>
 <li>
 <a href="#17">Performance Comparison Across Input Formats</a>
@@ -143,7 +143,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 </div>
 <h2 id="1">Basic Usage: 2D Matrix</h2>
 <p>
-<tt>findLargestBox2D</tt> accepts a 2D logical or numeric matrix where <tt>TRUE</tt>/non-zero indicates usable pixels and <tt>FALSE</tt>/zero indicates blocked pixels. It returns the bounding boxes of the largest rectangles consisting entirely of <tt>TRUE</tt>/non-zero pixels.</p>
+<tt>findLargestBox2D</tt> accepts a 2D logical or numeric matrix where TRUE/non-zero indicates usable pixels and FALSE/zero indicates blocked pixels. It returns the corner indices of the largest rectangles consisting entirely of usable pixels.</p>
 <pre class="codeinput">mask = false(9,9);
 mask(2:3, 2:5) = true; <span class="comment">% 2x4 = 8</span>
 bbox = findLargestBox2D(mask)
@@ -151,7 +151,7 @@ bbox = findLargestBox2D(mask)
 <pre class="codeoutput">bbox =
      2     3     2     5
 </pre>
-<h2 id="2">Output 1: <tt>bbox</tt> -- Bounding Box Indices</h2>
+<h2 id="2">Output 1: <tt>bbox</tt> -- Box Indices</h2>
 <p>The first output <tt>bbox</tt> is an <b>Nx4</b> matrix with one row per rectangle found. Its columns are <tt>[r1, r2, c1, c2]</tt>, where:</p>
 <div>
 <ul>
@@ -241,7 +241,7 @@ info.box(1)
          numBoxes: 2
       inputFormat: 'matrix'
               box: [2&times;1 struct]
-        timeTotal: 0.0008828
+        timeTotal: 0.0012428
 ans = 
   struct with fields:
 
@@ -262,7 +262,7 @@ ans =
     15
 </pre>
 <h2 id="7">Input 1: Sparse Matrix</h2>
-<p>For very large but sparsely populated grids, pass a sparse matrix. Any non-zero element is treated as <tt>TRUE</tt> (usable); zeros are <tt>FALSE</tt>. The function processes one row at a time, so it never materialises the full dense matrix -- this can give significant memory savings:</p>
+<p>For very large but sparsely populated grids, pass a sparse matrix. Any non-zero element is treated as usable; zero elements are blocked. The function processes one row at a time, so it never materialises the full dense matrix -- this can give significant memory savings:</p>
 <pre class="codeinput">mask = sparse(10000, 10000);
 mask(1000:1010, 2000:2050) = 1; <span class="comment">% 11x51 = 561</span>
 [bbox,dims,area] = findLargestBox2D(mask)
@@ -310,7 +310,7 @@ info =
          numBoxes: 2
       inputFormat: 'matrix'
               box: [2&times;1 struct]
-        timeTotal: 0.000535
+        timeTotal: 0.0019889
 </pre>
 <h2 id="10">Option <tt>maxN</tt> -- Limit Number of Results</h2>
 <p>Use the <tt>'maxN'</tt> option to limit the number of rectangles returned. This is useful when you only need the first occurrence, or when memory usage from many duplicates is a concern.</p>
@@ -402,7 +402,7 @@ findLargestBox2D(mask, opts)
      6     9     9    11
      6     9    10    12
 </pre>
-<h2 id="16">Empty or No Valid Rectangle</h2>
+<h2 id="16">No Usable Pixels or No Valid Rectangle</h2>
 <p>If the mask contains no usable pixels, or if no rectangle satisfies the active constraints, the function returns empty arrays for <tt>bbox</tt> and <tt>dims</tt>, zero for <tt>area</tt>, and an <tt>info</tt> struct without <tt>info.box</tt> field:</p>
 <pre class="codeinput">[bbox,dims,area,info] = findLargestBox2D(mask, <span class="string">'minArea'</span>,99)
 </pre>
@@ -419,7 +419,7 @@ info =
     rowsProcessed: 12
          numBoxes: 0
       inputFormat: 'matrix'
-        timeTotal: 0.0004682
+        timeTotal: 0.0002584
 </pre>
 <h2 id="17">Performance Comparison Across Input Formats</h2>
 <p>The three input formats (logical/numeric matrix, index vectors, sparse matrix) can differ substantially in memory use and runtime depending on mask size and density. There is no universally fastest format; the examples below time all three on a 9999x9999 grid with a small usable region so that you can observe the tradeoffs on your own hardware.</p>
@@ -458,9 +458,9 @@ ans =
 ans =
   logical
    1
-  1.3895 s  logical matrix
-  0.6170 s  index vectors
-  0.6098 s  sparse matrix
+  1.2235 s  logical matrix
+  0.2937 s  index vectors
+  0.4119 s  sparse matrix
 </pre>
 <h2 id="18">Interactive GUI (R2020b or later)</h2>
 <p>Try the interactive GUI: select from some interesting example matrices, toggle values by clicking on the image, and see the rectangles!</p>
@@ -490,13 +490,13 @@ ans =
 %% Basic Usage: 2D Matrix
 %
 % |findLargestBox2D| accepts a 2D logical or numeric matrix where
-% |TRUE|/non-zero indicates usable pixels and |FALSE|/zero indicates
-% blocked pixels. It returns the bounding boxes of the largest rectangles
-% consisting entirely of |TRUE|/non-zero pixels.
+% TRUE/non-zero indicates usable pixels and FALSE/zero indicates
+% blocked pixels. It returns the corner indices of the largest rectangles
+% consisting entirely of usable pixels.
 mask = false(9,9);
 mask(2:3, 2:5) = true; % 2x4 = 8
 bbox = findLargestBox2D(mask)
-%% Output 1: |bbox| REPLACE_WITH_DASH_DASH Bounding Box Indices
+%% Output 1: |bbox| REPLACE_WITH_DASH_DASH Box Indices
 %
 % The first output |bbox| is an *Nx4* matrix with one row per rectangle
 % found. Its columns are |[r1, r2, c1, c2]|, where:
@@ -551,7 +551,7 @@ info.box(1)
 %% Input 1: Sparse Matrix
 %
 % For very large but sparsely populated grids, pass a sparse matrix.
-% Any non-zero element is treated as |TRUE| (usable); zeros are |FALSE|.
+% Any non-zero element is treated as usable; zero elements are blocked.
 % The function processes one row at a time, so it never materialises the
 % full dense matrix REPLACE_WITH_DASH_DASH this can give significant memory savings:
 mask = sparse(10000, 10000);
@@ -626,7 +626,7 @@ findLargestBox2D(mask, 'minWidth',6)
 % multiple calls:
 opts = struct('maxN',3, 'maxWidth',3);
 findLargestBox2D(mask, opts)
-%% Empty or No Valid Rectangle
+%% No Usable Pixels or No Valid Rectangle
 %
 % If the mask contains no usable pixels, or if no rectangle satisfies the
 % active constraints, the function returns empty arrays for |bbox| and

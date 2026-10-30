@@ -104,14 +104,14 @@ delete(tmpLbl);
 %
 fgg = fgc * [0.298936; 0.587043; 0.114021]; % perceived luminance
 if fgg < 0.54 % lightmode
-	clr0 = [0.80, 0.80, 0.80]; % FALSE
-	clr1 = [1.00, 1.00, 1.00]; % TRUE
+	clr0 = [0.80, 0.80, 0.80]; % blocked
+	clr1 = [1.00, 1.00, 1.00]; % usable
 	clrF = [0,0,0]; % foreground
 	clrIn  = [0.75, 0.80, 1.00]; % inputs
 	clrOut = [0.92, 0.92, 1.00]; % outputs
 else % darkmode
-	clr0 = [0.15, 0.15, 0.15]; % FALSE
-	clr1 = [0.42, 0.42, 0.42]; % TRUE
+	clr0 = [0.15, 0.15, 0.15]; % blocked
+	clr1 = [0.42, 0.42, 0.42]; % usable
 	clrF = [1,1,1]; % foreground
 	clrIn  = [0.25, 0.20, 0.00]; % inputs
 	clrOut = [0.10, 0.10, 0.20]; % outputs

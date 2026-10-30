@@ -9,7 +9,7 @@ To make changes, update the MATLAB code and republish this document.
 <title>FINDLARGESTBOX3D User Guide</title>
 <meta name="generator" content="MATLAB 25.2">
 <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
-<meta name="DC.date" content="2026-06-23">
+<meta name="DC.date" content="2026-10-30">
 <meta name="DC.source" content="findLargestBox3D_Guide.m">
 <style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
@@ -79,7 +79,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <h1>
 <tt>FINDLARGESTBOX3D</tt> User Guide</h1>
 <!--introduction-->
-<p>The function <a href="https://www.mathworks.com/matlabcentral/fileexchange/######"><tt>findLargestBox3D</tt></a> finds the maximum-volume axis-aligned cuboid(s) within a 3D boolean mask using an exact slab-collapse algorithm.</p>
+<p>The function <tt>findLargestBox3D</tt> finds the maximum-volume axis-aligned cuboid(s) within a 3D boolean mask using an exact slab-collapse algorithm.</p>
 <p>The mask can be provided either as a 3D logical/numeric array, or as three vectors of voxel indices. Optional name-value arguments allow the user to specify the maximum number of matches, as well as limits on the cuboid height(s), width(s), depth(s), and volume(s).</p>
 <p>Internally, <tt>findLargestBox3D</tt> collapses along the smallest mask dimension and calls <tt>findLargestBox2D</tt> on each 2D slab footprint.</p>
 <!--/introduction-->
@@ -90,7 +90,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <a href="#1">Basic Usage: 3D Array</a>
 </li>
 <li>
-<a href="#2">Output 1: <tt>bbox</tt> -- Bounding Box Indices</a>
+<a href="#2">Output 1: <tt>bbox</tt> -- Box Indices</a>
 </li>
 <li>
 <a href="#3">Output 2: <tt>dims</tt> -- Cuboid Dimensions</a>
@@ -132,7 +132,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 <a href="#15">Options as a Struct</a>
 </li>
 <li>
-<a href="#16">Empty or No Valid Cuboid</a>
+<a href="#16">No Usable Voxels or No Valid Cuboid</a>
 </li>
 <li>
 <a href="#17">Performance Comparison Across Input Formats</a>
@@ -147,7 +147,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 </div>
 <h2 id="1">Basic Usage: 3D Array</h2>
 <p>
-<tt>findLargestBox3D</tt> accepts a 3D logical or numeric array where <tt>TRUE</tt>/non-zero indicates usable voxels and <tt>FALSE</tt>/zero indicates blocked voxels. It returns the bounding boxes of the largest cuboids consisting entirely of <tt>TRUE</tt>/non-zero voxels.</p>
+<tt>findLargestBox3D</tt> accepts a 3D logical or numeric array where TRUE/non-zero indicates usable voxels and FALSE/zero indicates blocked voxels. It returns the corner indices of the largest cuboids consisting entirely of usable voxels.</p>
 <pre class="codeinput">mask = false(9,9,9);
 mask(2:4, 2:8, 2:3) = true; <span class="comment">% 3x7x2 = 42</span>
 bbox = findLargestBox3D(mask)
@@ -155,7 +155,7 @@ bbox = findLargestBox3D(mask)
 <pre class="codeoutput">bbox =
      2     4     2     8     2     3
 </pre>
-<h2 id="2">Output 1: <tt>bbox</tt> -- Bounding Box Indices</h2>
+<h2 id="2">Output 1: <tt>bbox</tt> -- Box Indices</h2>
 <p>The first output <tt>bbox</tt> is an <b>Nx6</b> matrix with one row per cuboid found. Its columns are <tt>[r1, r2, c1, c2, p1, p2]</tt>, where:</p>
 <div>
 <ul>
@@ -239,7 +239,7 @@ volume =
 <li>
 <tt>.box(k).volume</tt> -- the volume in voxels.</li>
 <li>
-<tt>.box(k).area</tt> -- the total surface area.</li>
+<tt>.box(k).surface</tt> -- the total surface area.</li>
 </ul>
 </div>
 <pre class="codeinput">[~,~,~,info] = findLargestBox3D(mask)
@@ -254,8 +254,8 @@ info.box(1)
        inputFormat: 'array'
      slabDimension: 1
                box: [2&times;1 struct]
-         time2DFun: 0.017088
-         timeTotal: 0.019442
+         time2DFun: 0.021034
+         timeTotal: 0.022476
 ans = 
   struct with fields:
 
@@ -266,7 +266,7 @@ ans =
        width: 7
        depth: 2
       volume: 42
-        area: 82
+     surface: 82
     diagonal: 7.874
 </pre>
 <h2 id="6">Output 5: <tt>uniV</tt> -- Union of Cuboid Volumes</h2>
@@ -406,7 +406,7 @@ findLargestBox3D(mask, opts)
 <pre class="codeoutput">ans =
      2     3     2     4     2     8
 </pre>
-<h2 id="16">Empty or No Valid Cuboid</h2>
+<h2 id="16">No Usable Voxels or No Valid Cuboid</h2>
 <p>If the mask contains no usable voxels, or if no cuboid satisfies the active constraints, the function returns empty arrays for <tt>bbox</tt> and <tt>dims</tt>, zero for <tt>volume</tt>, and an <tt>info</tt> struct without <tt>info.box</tt> field:</p>
 <pre class="codeinput">[bbox,dims,volume,info] = findLargestBox3D(mask, <span class="string">'minVolume'</span>,999)
 </pre>
@@ -424,8 +424,8 @@ info =
           numBoxes: 0
        inputFormat: 'array'
      slabDimension: 3
-         time2DFun: 0.019716
-         timeTotal: 0.020519
+         time2DFun: 0.021735
+         timeTotal: 0.022439
 </pre>
 <h2 id="17">Performance Comparison Across Input Formats</h2>
 <p>The two input formats (logical/numeric array, index vectors) can differ substantially in memory use and runtime depending on mask size and density. There is no universally fastest format; the example below times both on a moderately sized volume that is safe to run interactively.</p>
@@ -456,8 +456,8 @@ ans =
 ans =
   logical
    1
-  0.4682 s  3D array
-  1.9864 s  index vectors
+  1.1983 s  3D array
+  2.6818 s  index vectors
 </pre>
 <h2 id="18">Dependency on <tt>findLargestBox2D</tt>
 </h2>
@@ -469,9 +469,9 @@ info.time2DFun
 info.timeTotal
 </pre>
 <pre class="codeoutput">ans =
-       0.1588
+      0.49076
 ans =
-      0.16207
+      0.49399
 </pre>
 <h2 id="19">Interactive GUI (R2020b or later)</h2>
 <p>Try the interactive GUI: select from some interesting example arrays, toggle values by clicking on the images, and see the cuboids!</p>
@@ -487,8 +487,8 @@ ans =
 ##### SOURCE BEGIN #####
 %% |FINDLARGESTBOX3D| User Guide
 %
-% The function <https://www.mathworks.com/matlabcentral/fileexchange/######
-% |findLargestBox3D|> finds the maximum-volume axis-aligned cuboid(s)
+% The function
+% |findLargestBox3D| finds the maximum-volume axis-aligned cuboid(s)
 % within a 3D boolean mask using an exact slab-collapse algorithm.
 %
 % The mask can be provided either as a 3D logical/numeric array, or as
@@ -502,13 +502,13 @@ ans =
 %% Basic Usage: 3D Array
 %
 % |findLargestBox3D| accepts a 3D logical or numeric array where
-% |TRUE|/non-zero indicates usable voxels and |FALSE|/zero indicates
-% blocked voxels. It returns the bounding boxes of the largest cuboids
-% consisting entirely of |TRUE|/non-zero voxels.
+% TRUE/non-zero indicates usable voxels and FALSE/zero indicates
+% blocked voxels. It returns the corner indices of the largest cuboids
+% consisting entirely of usable voxels.
 mask = false(9,9,9);
 mask(2:4, 2:8, 2:3) = true; % 3x7x2 = 42
 bbox = findLargestBox3D(mask)
-%% Output 1: |bbox| REPLACE_WITH_DASH_DASH Bounding Box Indices
+%% Output 1: |bbox| REPLACE_WITH_DASH_DASH Box Indices
 %
 % The first output |bbox| is an *Nx6* matrix with one row per cuboid found.
 % Its columns are |[r1, r2, c1, c2, p1, p2]|, where:
@@ -555,7 +555,7 @@ bbox = findLargestBox3D(mask)
 % * |.box(k).width|    REPLACE_WITH_DASH_DASH the width in voxels.
 % * |.box(k).depth|    REPLACE_WITH_DASH_DASH the depth in voxels.
 % * |.box(k).volume|   REPLACE_WITH_DASH_DASH the volume in voxels.
-% * |.box(k).area|     REPLACE_WITH_DASH_DASH the total surface area.
+% * |.box(k).surface|  REPLACE_WITH_DASH_DASH the total surface area.
 %
 [~,~,~,info] = findLargestBox3D(mask)
 info.box(1)
@@ -640,7 +640,7 @@ mask(9:15, 6:8, 2:4) = true; % 7x3x3 = 63
 % multiple calls:
 opts = struct('maxN',1, 'minDepth',5);
 findLargestBox3D(mask, opts)
-%% Empty or No Valid Cuboid
+%% No Usable Voxels or No Valid Cuboid
 %
 % If the mask contains no usable voxels, or if no cuboid satisfies the
 % active constraints, the function returns empty arrays for |bbox| and

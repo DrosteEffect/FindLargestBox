@@ -9,8 +9,8 @@ To make changes, update the MATLAB code and republish this document.
 <title>FINDLARGESTBOX3D User Guide</title>
 <meta name="generator" content="MATLAB 25.2">
 <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
-<meta name="DC.date" content="2026-10-30">
-<meta name="DC.source" content="findLargestBox3D_Guide.m">
+<meta name="DC.date" content="2026-11-08">
+<meta name="DC.source" content="findLargestBox3D_UserGuide.m">
 <style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
@@ -254,8 +254,8 @@ info.box(1)
        inputFormat: 'array'
      slabDimension: 1
                box: [2&times;1 struct]
-         time2DFun: 0.021034
-         timeTotal: 0.022476
+         time2DFun: 0.037437
+         timeTotal: 0.040951
 ans = 
   struct with fields:
 
@@ -424,8 +424,8 @@ info =
           numBoxes: 0
        inputFormat: 'array'
      slabDimension: 3
-         time2DFun: 0.021735
-         timeTotal: 0.022439
+         time2DFun: 0.018132
+         timeTotal: 0.018883
 </pre>
 <h2 id="17">Performance Comparison Across Input Formats</h2>
 <p>The two input formats (logical/numeric array, index vectors) can differ substantially in memory use and runtime depending on mask size and density. There is no universally fastest format; the example below times both on a moderately sized volume that is safe to run interactively.</p>
@@ -456,8 +456,8 @@ ans =
 ans =
   logical
    1
-  1.1983 s  3D array
-  2.6818 s  index vectors
+  1.6310 s  3D array
+  4.1204 s  index vectors
 </pre>
 <h2 id="18">Dependency on <tt>findLargestBox2D</tt>
 </h2>
@@ -469,15 +469,15 @@ info.time2DFun
 info.timeTotal
 </pre>
 <pre class="codeoutput">ans =
-      0.49076
+       0.7861
 ans =
-      0.49399
+      0.79038
 </pre>
 <h2 id="19">Interactive GUI (R2020b or later)</h2>
 <p>Try the interactive GUI: select from some interesting example arrays, toggle values by clicking on the images, and see the cuboids!</p>
 <pre class="codeinput">findLargestBox3D_GUI(mask)
 </pre>
-<img vspace="5" hspace="5" src="findLargestBox3D_Guide_01.png" alt=""> <p class="footer">
+<img vspace="5" hspace="5" src="findLargestBox3D_UserGuide_01.png" alt=""> <p class="footer">
 <br>
 <a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2025b</a>
 <br>

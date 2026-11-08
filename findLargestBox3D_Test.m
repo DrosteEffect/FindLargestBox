@@ -1,4 +1,4 @@
-function findLargestBox3D_test()
+function findLargestBox3D_Test()
 % Testcases for the function findLargestBox3D.
 %
 %% Dependencies %%
@@ -13,7 +13,7 @@ obj.start()
 mainfun(obj) % check
 obj.finish()
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox3D_test
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox3D_Test
 function mainfun(chk)
 %
 %% Edge Cases: Empty Arrays %%

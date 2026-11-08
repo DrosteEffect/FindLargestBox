@@ -18,6 +18,7 @@ function mainfun(chk)
 % All should pass:
 chk.i([],'',{},"X").o([],'',{},"X")
 chk.i(123:4567,8,9).o(123:4567,8,9)
+chk.i(@i,@i).o(@i).e('MATLAB:deal:narginNargoutMismatch')
 % 1st should pass, 2nd should fail:
 chk.i([],[]).o([],'') % double vs char
 chk.i([],[]).o([],"") % double vs string
@@ -29,6 +30,9 @@ chk.i([1,2,3,4],[5,6,7,8]).o([1,2,3,4],[5,6,NaN]) % 4 vs 3 elements
 chk.i([1,2,3,4],[5,6,7,8]).o([1,2,3,4],[5;6;7;8]) % row vs column
 chk.i("",cat(3,"hi","me")).o("",cat(3,"hi","me","!")) % 2 vs 3 elements
 chk.i('hello','hello you').o('hello','hello world') % 'you' vs 'world'
+% Errors should fail:
+chk.i(@i).o(@i,@i).e('MATLAB:deal:narginNargoutMismatch')
+chk.i(@i,@i).o(@i).e('MATLAB:deal:notRealError')
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%mainfun
 % Copyright (c) 2012-2026 Stephen Cobeldick

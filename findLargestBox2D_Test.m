@@ -1,4 +1,4 @@
-function findLargestBox2D_test()
+function findLargestBox2D_Test()
 % Quick sanity check of the findLargestBox test class.
 %
 %% Dependencies %%
@@ -13,7 +13,7 @@ obj.start()
 mainfun(obj) % check
 obj.finish()
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D_test
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%findLargestBox2D_Test
 function mainfun(chk)
 %
 %% Edge Cases %%

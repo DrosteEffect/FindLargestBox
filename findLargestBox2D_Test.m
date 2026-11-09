@@ -669,6 +669,74 @@ chk.i(M,'minArea',12,'maxArea',15,'maxN',1).o([2,6,2,4],[5,3],15)
 %   Best: 3x3=9 at topmost-leftmost position [2,4,2,4].
 chk.i(M,'maxHeight',3,'maxWidth',3,'maxN',1).o([2,4,2,4],[3,3],9)
 %
+%% Error Handling %%
+%
+% Invalid mask data.
+chk.i({true}).e('SC:findLargestBox2D:mask:invalidType')
+chk.i(true(2,2,2)).e('SC:findLargestBox2D:mask:invalidSize')
+chk.i(1+1i).e('SC:findLargestBox2D:mask:complexData')
+chk.i([1,NaN]).e('SC:findLargestBox2D:mask:nonfiniteData')
+chk.i([1,Inf]).e('SC:findLargestBox2D:mask:nonfiniteData')
+%
+% Unsupported number of non-option inputs.
+chk.i(true(2),1,1).e('SC:findLargestBox2D:unsupportedInputs')
+%
+% Index vectors must be real numeric vectors.
+chk.i({1},1).e('SC:findLargestBox2D:pixR:notRealNumericVector')
+chk.i(1,{1}).e('SC:findLargestBox2D:pixC:notRealNumericVector')
+chk.i([1,2;3,4],1:4).e('SC:findLargestBox2D:pixR:notRealNumericVector')
+chk.i(1:4,[1,2;3,4]).e('SC:findLargestBox2D:pixC:notRealNumericVector')
+chk.i(1+1i,1).e('SC:findLargestBox2D:pixR:notRealNumericVector')
+chk.i(1,1+1i).e('SC:findLargestBox2D:pixC:notRealNumericVector')
+%
+% Index vectors must contain finite whole positive values.
+chk.i([1,NaN],1:2).e('SC:findLargestBox2D:pixR:nonfiniteValues')
+chk.i(1:2,[1,Inf]).e('SC:findLargestBox2D:pixC:nonfiniteValues')
+chk.i([1,2.5],1:2).e('SC:findLargestBox2D:pixR:fractionalValues')
+chk.i(1:2,[1,2.5]).e('SC:findLargestBox2D:pixC:fractionalValues')
+chk.i([0,1],1:2).e('SC:findLargestBox2D:pixR:negativeValues')
+chk.i(1:2,[-1,1]).e('SC:findLargestBox2D:pixC:negativeValues')
+%
+% Index vectors must have equal lengths.
+chk.i(1:2,1:3).e('SC:findLargestBox2D:indices:differentLengths')
+%
+% Unknown and duplicated option names.
+chk.i(true(2),'unknownOption',1).e('SC:findLargestBox2D:options:UnknownOptionName')
+%
+opts = struct('maxN',1,'MAXN',2);
+chk.i(true(2),opts).e('SC:findLargestBox2D:options:DuplicateOptionNames')
+%
+% Invalid display option.
+chk.i(true(2),'display','loud').e('SC:findLargestBox2D:display:UnknownValue')
+chk.i(true(2),'display',1).e('SC:findLargestBox2D:display:UnknownValue')
+%
+% Numeric options must be scalar numeric values.
+chk.i(true(2),'maxN',[1,2]).e('SC:findLargestBox2D:maxN:NotScalarNumeric')
+chk.i(true(2),'minArea','one').e('SC:findLargestBox2D:minArea:NotScalarNumeric')
+%
+% Numeric options must be real.
+chk.i(true(2),'maxArea',1+1i).e('SC:findLargestBox2D:maxArea:NotRealNumeric')
+chk.i(true(2),'minHeight',2+1i).e('SC:findLargestBox2D:minHeight:NotRealNumeric')
+%
+% Numeric options must be within their permitted ranges.
+chk.i(true(2),'maxN',0).e('SC:findLargestBox2D:maxN:OutOfRange')
+chk.i(true(2),'maxArea',NaN).e('SC:findLargestBox2D:maxArea:OutOfRange')
+chk.i(true(2),'minArea',Inf).e('SC:findLargestBox2D:minArea:OutOfRange')
+chk.i(true(2),'minWidth',0).e('SC:findLargestBox2D:minWidth:OutOfRange')
+%
+% Numeric options must be whole numbers.
+chk.i(true(2),'maxHeight',2.5).e('SC:findLargestBox2D:maxHeight:NotWholeNumeric')
+chk.i(true(2),'minWidth',1.5).e('SC:findLargestBox2D:minWidth:NotWholeNumeric')
+%
+% Minimum values must not exceed corresponding maximum values.
+chk.i(true(2),'minArea',3,'maxArea',2).e('SC:findLargestBox2D:options:InvertedAreaValues')
+chk.i(true(2),'minHeight',3,'maxHeight',2).e('SC:findLargestBox2D:options:InvertedHeightValues')
+chk.i(true(2),'minWidth',3,'maxWidth',2).e('SC:findLargestBox2D:options:InvertedWidthValues')
+%
+% Dimension bounds must be compatible with area bounds.
+chk.i(true(2),'minHeight',3,'minWidth',4,'maxArea',11).e('SC:findLargestBox2D:options:MinDimsExceedMaxArea')
+chk.i(true(2),'maxHeight',2,'maxWidth',3,'minArea',7).e('SC:findLargestBox2D:options:MaxDimsBelowMinArea')
+%
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%mainfun
 % Copyright (c) 2026 Stephen Cobeldick

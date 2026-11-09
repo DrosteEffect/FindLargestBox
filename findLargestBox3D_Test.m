@@ -649,6 +649,87 @@ M2D = logical([1,0,1,0,0; 1,0,1,1,1; 1,1,1,1,1; 1,0,0,1,0]);
 M = repmat(M2D, [1,1,5]);
 chk.i(M,'maxN',1).o([2,3,3,5,1,5],[2,3,5],30)
 %
+%% Error Handling %%
+%
+% Invalid mask data.
+chk.i({true}).e('SC:findLargestBox3D:mask:invalidType')
+chk.i(true(2,2,2,2)).e('SC:findLargestBox3D:mask:invalidSize')
+chk.i(1+1i).e('SC:findLargestBox3D:mask:complexData')
+chk.i(cat(3,1,NaN)).e('SC:findLargestBox3D:mask:nonfiniteData')
+chk.i(cat(3,1,Inf)).e('SC:findLargestBox3D:mask:nonfiniteData')
+%
+% Unsupported number of non-option inputs.
+chk.i(true(2,2,2),1).e('SC:findLargestBox3D:unsupportedInputs')
+chk.i(true(2,2,2),1,1,1).e('SC:findLargestBox3D:unsupportedInputs')
+%
+% Index vectors must be real numeric vectors.
+chk.i({1},1,1).e('SC:findLargestBox3D:voxR:notRealNumericVector')
+chk.i(1,{1},1).e('SC:findLargestBox3D:voxC:notRealNumericVector')
+chk.i(1,1,{1}).e('SC:findLargestBox3D:voxP:notRealNumericVector')
+chk.i([1,2;3,4],1:4,1:4).e('SC:findLargestBox3D:voxR:notRealNumericVector')
+chk.i(1:4,[1,2;3,4],1:4).e('SC:findLargestBox3D:voxC:notRealNumericVector')
+chk.i(1:4,1:4,[1,2;3,4]).e('SC:findLargestBox3D:voxP:notRealNumericVector')
+chk.i(1+1i,1,1).e('SC:findLargestBox3D:voxR:notRealNumericVector')
+chk.i(1,1+1i,1).e('SC:findLargestBox3D:voxC:notRealNumericVector')
+chk.i(1,1,1+1i).e('SC:findLargestBox3D:voxP:notRealNumericVector')
+%
+% Index vectors must contain finite whole positive values.
+chk.i([1,NaN],1:2,1:2).e('SC:findLargestBox3D:voxR:nonfiniteValues')
+chk.i(1:2,[1,Inf],1:2).e('SC:findLargestBox3D:voxC:nonfiniteValues')
+chk.i(1:2,1:2,[1,NaN]).e('SC:findLargestBox3D:voxP:nonfiniteValues')
+chk.i([1,2.5],1:2,1:2).e('SC:findLargestBox3D:voxR:fractionalValues')
+chk.i(1:2,[1,2.5],1:2).e('SC:findLargestBox3D:voxC:fractionalValues')
+chk.i(1:2,1:2,[1,2.5]).e('SC:findLargestBox3D:voxP:fractionalValues')
+chk.i([0,1],1:2,1:2).e('SC:findLargestBox3D:voxR:negativeValues')
+chk.i(1:2,[-1,1],1:2).e('SC:findLargestBox3D:voxC:negativeValues')
+chk.i(1:2,1:2,[0,1]).e('SC:findLargestBox3D:voxP:negativeValues')
+%
+% All three index vectors must have equal lengths.
+chk.i(1:2,1:3,1:2).e('SC:findLargestBox3D:indices:differentLengths')
+chk.i(1:2,1:2,1:3).e('SC:findLargestBox3D:indices:differentLengths')
+%
+% Unknown and duplicated option names.
+chk.i(true(2,2,2),'unknownOption',1).e('SC:findLargestBox3D:options:UnknownOptionName')
+%
+opts = struct('maxDepth',1,'MAXDEPTH',2);
+chk.i(true(2,2,2),opts).e('SC:findLargestBox3D:options:DuplicateOptionNames')
+%
+% Invalid display option.
+chk.i(true(2,2,2),'display','loud').e('SC:findLargestBox3D:display:UnknownValue')
+chk.i(true(2,2,2),'display',1).e('SC:findLargestBox3D:display:UnknownValue')
+%
+% Numeric options must be scalar numeric values.
+chk.i(true(2,2,2),'maxN',[1,2]).e('SC:findLargestBox3D:maxN:NotScalarNumeric')
+chk.i(true(2,2,2),'minVolume','one').e('SC:findLargestBox3D:minVolume:NotScalarNumeric')
+chk.i(true(2,2,2),'maxDepth',[2,3]).e('SC:findLargestBox3D:maxDepth:NotScalarNumeric')
+%
+% Numeric options must be real.
+chk.i(true(2,2,2),'maxVolume',1+1i).e('SC:findLargestBox3D:maxVolume:NotRealNumeric')
+chk.i(true(2,2,2),'minDepth',2+1i).e('SC:findLargestBox3D:minDepth:NotRealNumeric')
+%
+% Numeric options must be within their permitted ranges.
+chk.i(true(2,2,2),'maxN',0).e('SC:findLargestBox3D:maxN:OutOfRange')
+chk.i(true(2,2,2),'maxVolume',NaN).e('SC:findLargestBox3D:maxVolume:OutOfRange')
+chk.i(true(2,2,2),'minVolume',Inf).e('SC:findLargestBox3D:minVolume:OutOfRange')
+chk.i(true(2,2,2),'minDepth',0).e('SC:findLargestBox3D:minDepth:OutOfRange')
+%
+% Numeric options must be whole numbers.
+chk.i(true(2,2,2),'maxHeight',2.5).e('SC:findLargestBox3D:maxHeight:NotWholeNumeric')
+chk.i(true(2,2,2),'minWidth',1.5).e('SC:findLargestBox3D:minWidth:NotWholeNumeric')
+chk.i(true(2,2,2),'maxDepth',3.5).e('SC:findLargestBox3D:maxDepth:NotWholeNumeric')
+%
+% Minimum values must not exceed corresponding maximum values.
+chk.i(true(2,2,2),'minVolume',3,'maxVolume',2).e('SC:findLargestBox3D:options:InvertedVolumeValues')
+chk.i(true(2,2,2),'minHeight',3,'maxHeight',2).e('SC:findLargestBox3D:options:InvertedHeightValues')
+chk.i(true(2,2,2),'minWidth',3,'maxWidth',2).e('SC:findLargestBox3D:options:InvertedWidthValues')
+chk.i(true(2,2,2),'minDepth',3,'maxDepth',2).e('SC:findLargestBox3D:options:InvertedDepthValues')
+%
+% Dimension bounds must be compatible with volume bounds.
+chk.i(true(2,2,2), ...
+'minHeight',2,'minWidth',3,'minDepth',4,'maxVolume',23).e('SC:findLargestBox3D:options:MinDimsExceedMaxVolume')
+%
+chk.i(true(2,2,2), 'maxHeight',2,'maxWidth',3,'maxDepth',4,'minVolume',25).e('SC:findLargestBox3D:options:MaxDimsBelowMinVolume')
+%
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%mainfun
 % Copyright (c) 2026 Stephen Cobeldick

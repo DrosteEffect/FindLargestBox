@@ -30,6 +30,11 @@ classdef test_flb_fun < handle
 			obj.fmtOTL = fmt;
 			obj.barHnd = myWaitbar(0,'Counting tests...', 'IntegerHandle','off', 'Name',dbs(2).name);
 		end
+		function delete(obj) % destructor
+			try %#ok<TRYNC>
+				close(obj.barHnd);
+			end
+		end
 		function warn(obj,txt) % warning text
 			if obj.cntFlg
 				warning(txt)
@@ -52,7 +57,7 @@ classdef test_flb_fun < handle
 			end
 		end
 		function e(obj,erX) % expected error identifier
-			% e must be terminal and therefore returns no object.
+			% Method e must be terminal and therefore returns no object.
 			assert(ischar(erX),'Expected error identifier must be a character row vector.')
 			if obj.cntFlg % count
 				obj.cntTot = obj.cntTot + 1;
@@ -88,9 +93,10 @@ classdef test_flb_fun < handle
 		function finish(obj) % finish execution
 			dbs = dbstack();
 			fprintf(obj.fmtOTL, dbs(2).file, dbs(2).line);
-			fprintf(' %d of %d tests failed.\n', obj.cntFld, obj.cntTot)
-			try %#ok<TRYNC>
-				close(obj.barHnd);
+			if obj.cntFld
+				fprintf(' %d of %d tests failed.\n', obj.cntFld, obj.cntTot);
+			else
+				fprintf(' All %d tests passed.\n', obj.cntTot)
 			end
 		end
 		function check(obj) % compare expected against actual output
